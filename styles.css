@@ -16,3 +16,16 @@ body {
     margin-top: 20px;
     border: 1px solid #28a745;
 }
+
+/* 针对轮播图图片 */
+.carousel-item img {
+    max-width: 60%;    /* 最大宽度限制为 60% */
+    height: auto;      /* 高度自适应 */
+    margin: 0 auto;    /* 水平居中 */
+    display: block;    /* 解决 margin 居中问题 */
+}
+
+/* 覆盖 Bootstrap 的默认 100% 宽度 */
+.carousel-item {
+    text-align: center; /* 父容器居中 */
+}
