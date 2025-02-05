@@ -39,3 +39,7 @@ h2 {
 .carousel-item {
     text-align: center; 
 }
+
+.list-group {
+    margin-top: 15px;
+}
