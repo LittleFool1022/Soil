@@ -1,0 +1,11 @@
+[build]
+  command = "echo 'No build needed'"  # 静态站点无需构建命令（根据项目调整）
+  publish = "/"                       # 发布目录
+  processing = "jekyll"  # 仅需此配置激活文件处理（无需实际使用 Jekyll）
+
+[[redirects]]
+  from = "/uploads/*"
+  to = "/.netlify/uploads/:splat"
+  status = 200
+
+# 其他配置（如自定义头、环境变量等）
