@@ -46,26 +46,12 @@
 
         <section id="news" class="mb-5">
             <h2 class="text-success">最新公示公告</h2>
-            <div class="list-group">
-                <!-- 假设有多个公告 -->
-                <div class="list-group-item">
-                    <h5 class="mb-1">2024年XX项目水土保持方案公示</h5>
-                    <p class="mb-0">2024年3月10日</p>
-                    <a href="detail.html?id=1" class="btn btn-primary">查看详情</a>
-                </div>
-                <div class="list-group-item">
-                    <h5 class="mb-1">2023年度水土保持验收结果公告</h5>
-                    <p class="mb-0">2023年12月15日</p>
-                    <a href="detail.html?id=2" class="btn btn-primary">查看详情</a>
-                </div>
-                <!-- 更多公告 -->
-            </div>
+            <ul class="list-group" id="announcement-list">
+                <!-- 公告列表将通过 JavaScript 动态生成 -->
+            </ul>
             <nav aria-label="Page navigation example">
-                <ul class="pagination justify-content-center">
-                    <li class="page-item"><a class="page-link" href="#">上一页</a></li>
-                    <li class="page-item"><a class="page-link" href="#">1</a></li>
-                    <li class="page-item"><a class="page-link" href="#">2</a></li>
-                    <li class="page-item"><a class="page-link" href="#">下一页</a></li>
+                <ul class="pagination justify-content-center" id="pagination">
+                    <!-- 分页链接将通过 JavaScript 动态生成 -->
                 </ul>
             </nav>
         </section>
@@ -94,30 +80,58 @@
     <!-- 引入Bootstrap JS -->
     <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
-        // 从数据库获取公示列表
-        fetch('https://zsmwcrgsaamslzuvscug.supabase.co/soil_list', {
-          method: 'GET',
-          headers: {
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA'
-          }
-        })
-        .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok ' + response.statusText);
+        let currentPage = 1;
+        const itemsPerPage = 20;
+        const公告列表容器 = document.querySelector('#announcement-list');
+        const分页容器 = document.querySelector('#pagination');
+
+        function fetchAnnouncements(page) {
+            fetch(`https://zsmwcrgsaamslzuvscug.supabase.co/soil_list?page=${page}&limit=${itemsPerPage}`, {
+                method: 'GET',
+                headers: {
+                    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                公告列表容器.innerHTML = '';
+                data.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.innerHTML = `<h5 class="mb-1">${item.project_name}</h5><p class="mb-0">${item.date}</p><a href="detail.html?id=${item.id}" class="btn btn-primary">查看详情</a>`;
+                    公告列表容器.appendChild(li);
+                });
+                updatePagination(data.length, page, itemsPerPage);
+            })
+            .catch(error => console.error('Error fetching public list:', error));
         }
-        return response.json();
-        })
-        .then(data => {
-        const list = document.querySelector('#news .list-group');
-        data.forEach(item => {
-            const li = document.createElement('li');
-            li.className = 'list-group-item';
-            li.innerHTML = `<h5 class="mb-1">${item.project_name}</h5><p class="mb-0">${item.date}</p><a href="${item.pdf_url}" class="btn btn-primary" target="_blank">查看详情</a>`;
-            list.appendChild(li);
-        });
-        })
-          .catch(error => console.error('Error fetching public list:', error));
-        </script>
+
+        function updatePagination(totalItems, currentPage, itemsPerPage) {
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            分页容器.innerHTML = '';
+            if (totalPages > 1) {
+                for (let i = 1; i <= totalPages; i++) {
+                    const li = document.createElement('li');
+                    li.className = 'page-item';
+                    if (i === currentPage) {
+                        li.className += ' active';
+                        li.innerHTML = `<span class="page-link">${i}</span>`;
+                    } else {
+                        li.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="fetchAnnouncements(${i})">${i}</a>`;
+                    }
+                    分页容器.appendChild(li);
+                }
+            }
+        }
+
+        // 初始化加载第一页数据
+        fetchAnnouncements(currentPage);
+    </script>
 
 </body>
 </html>
