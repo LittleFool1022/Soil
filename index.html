@@ -86,7 +86,7 @@
         const分页容器 = document.querySelector('#pagination');
 
         function fetchAnnouncements(page) {
-            fetch(`https://zsmwcrgsaamslzuvscug.supabase.co/soil_list?page=${page}&limit=${itemsPerPage}`, {
+            fetch(`https://zsmwcrgsaamslzuvscug.supabase.co/rest/v1/soil_list?page=${page}&limit=${itemsPerPage}`, {
                 method: 'GET',
                 headers: {
                     'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA'

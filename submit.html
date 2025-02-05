@@ -24,10 +24,7 @@
     <div class="container">
         <div class="form-container">
             <h2 class="text-center mb-4">水土保持公示信息提交</h2>
-            <form id="submitForm" action="/success.html" method="POST" enctype="multipart/form-data" data-netlify="true">
-                <!-- Netlify 表单配置 -->
-                <input type="hidden" name="form-name" value="public_form">
-
+            <form id="submitForm">
                 <!-- 项目信息 -->
                 <div class="mb-3">
                     <label class="form-label required">项目名称</label>
@@ -59,5 +56,36 @@
             </form>
         </div>
     </div>
+
+    <script>
+        document.getElementById('submitForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(this);
+            const apiURL = 'https://zsmwcrgsaamslzuvscug.supabase.co/rest/v1/soil_list'; // 替换为您的 Supabase API URL
+            const apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA'; // 替换为您的 Supabase API Key
+
+            fetch(apiURL, {
+                method: 'POST',
+                headers: {
+                    'apikey': apiKey,
+                    'Content-Type': 'multipart/form-data'
+                },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(() => {
+                window.location.href = '/success.html'; // 提交成功后跳转到 success.html
+            })
+            .catch(error => {
+                console.error('Error submitting form:', error);
+            });
+        });
+    </script>
 </body>
 </html>
