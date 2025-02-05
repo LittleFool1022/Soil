@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水土保持公示信息提交</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .form-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .required::after {
+            content: "*";
+            color: red;
+            margin-left: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h2 class="text-center mb-4">水土保持公示信息提交</h2>
+            <form id="submitForm" action="/success.html" method="POST" enctype="multipart/form-data" data-netlify="true">
+                <!-- Netlify 表单配置 -->
+                <input type="hidden" name="form-name" value="public_form">
+
+                <!-- 项目信息 -->
+                <div class="mb-3">
+                    <label class="form-label required">项目名称</label>
+                    <input type="text" class="form-control" name="project_name" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label required">建设单位</label>
+                    <input type="text" class="form-control" name="company" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label required">联系人</label>
+                    <input type="text" class="form-control" name="contact_person" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label required">联系电话</label>
+                    <input type="tel" class="form-control" name="phone" pattern="\d{11}" required>
+                </div>
+
+                <!-- 文件上传 -->
+                <div class="mb-3">
+                    <label class="form-label required">上传公示文件（PDF格式）</label>
+                    <input type="file" class="form-control" name="document" accept=".pdf" required>
+                </div>
+
+                <button type="submit" class="btn btn-success w-100">提交公示</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
