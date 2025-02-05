@@ -1,0 +1,18 @@
+body {
+    font-family: "Microsoft YaHei", sans-serif;
+    background-color: #f8f9fa;
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.carousel-item img {
+    max-height: 400px;
+    object-fit: cover;
+}
+
+.card {
+    margin-top: 20px;
+    border: 1px solid #28a745;
+}
