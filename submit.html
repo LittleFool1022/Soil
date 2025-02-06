@@ -82,6 +82,7 @@
                 //console.log('提交时supabase状态:', window.supabase);
     
                 const formData = new FormData(event.target);
+                //console.log(formData);
                 const file = formData.get('document');
     
                 // 上传文件到Storage
@@ -96,6 +97,7 @@
                 const { data: urlData } = window.supabase.storage
                     .from('documents')
                     .getPublicUrl(fileData.path);
+                //console.log(urlData);
     
                 // 准备提交数据
                 const submissionData = {
