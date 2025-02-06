@@ -19,6 +19,14 @@
             margin-left: 3px;
         }
     </style>
+    <!-- 在head中添加Supabase客户端 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const supabase = createClient(
+            'https://zsmwcrgsaamslzuvscug.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg3NDA1OTksImV4cCI6MjA1NDMxNjU5OX0.UCwIvCoEOuGxva10JIS2oAwZQ-trykJL1pwgQLn3eQ4'
+        );
+    </script>
 </head>
 <body>
     <div class="container">
@@ -58,40 +66,48 @@
     </div>
 
     <script>
-        document.getElementById('submitForm').addEventListener('submit', function(event) {
+    document.getElementById('submitForm').addEventListener('submit', async (event) => {
         event.preventDefault();
+        
+        const formData = new FormData(event.target);
+        const file = formData.get('document');
 
-        const formData = new FormData(this);
-        const apiURL = 'https://zsmwcrgsaamslzuvscug.supabase.co/rest/v1/soil_list'; // 替换为您的 Supabase API URL
-        const apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA'; // 替换为您的 Supabase API Key
+        try {
+            // 上传文件到Storage
+            const fileName = `${Date.now()}_${file.name}`;
+            const { data: fileData, error: uploadError } = await supabase.storage
+                .from('documents') // 存储桶名称
+                .upload(fileName, file);
 
-        // 将FormData转换为JSON
-        const jsonData = {};
-        formData.forEach((value, key) => {
-            jsonData[key] = value;
-        });
+            if (uploadError) throw uploadError;
 
-        fetch(apiURL, {
-            method: 'POST',
-            headers: {
-                'apikey': apiKey,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(jsonData)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-            return response.json();
-        })
-        .then(() => {
-            window.location.href = '/success.html'; // 提交成功后跳转到 success.html
-        })
-        .catch(error => {
-            console.error('Error submitting form:', error);
-            alert('提交失败，请稍后重试。'); // 在页面上显示错误提示
-        });
+            // 获取文件公共URL
+            const { data: urlData } = supabase.storage
+                .from('documents')
+                .getPublicUrl(fileData.path);
+
+            // 准备提交数据
+            const submissionData = {
+                project_name: formData.get('project_name'),
+                company: formData.get('company'),
+                contact_person: formData.get('contact_person'),
+                phone: formData.get('phone'),
+                document_url: urlData.publicUrl // 存储文件URL
+            };
+
+            // 插入数据到数据库
+            const { data, error } = await supabase
+                .from('soil_list')
+                .insert([submissionData])
+                .select();
+
+            if (error) throw error;
+            
+            window.location.href = '/success.html';
+        } catch (error) {
+            console.error('提交失败:', error);
+            alert(`提交失败: ${error.message}`);
+        }
     });
     </script>
 </body>
