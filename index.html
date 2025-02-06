@@ -47,11 +47,7 @@
         <section id="news" class="mb-5">
             <h2 class="text-success">最新公示公告</h2>
             <!-- 新增用于动态加载 Supabase 公告的容器 -->
-            <div id="supabase-announcement-list" class="list-group mb-3"></div>
-            <!-- 分页按钮容器 -->
-            <nav>
-                <ul id="pagination" class="pagination justify-content-center"></ul>
-            </nav>
+            <div id="supabase-announcement-list" class="row"></div>
             <!-- 保留原有静态公告展示 -->
             <div class="list-group">
                 <a href="detail.html?id=1" class="list-group-item">
@@ -86,73 +82,76 @@
     <!-- 引入Bootstrap JS -->
     <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
-        let currentPage = 1;
-        const itemsPerPage = 20;
-        const announcementListContainer = document.getElementById('supabase-announcement-list');
-        const paginationContainer = document.getElementById('pagination');
-    
-        async function fetchAnnouncements(page) {
-            currentPage = page;
-            const offset = (page - 1) * itemsPerPage;
+        async function fetchAllAnnouncements() {
+          // 构造不带分页参数的 URL，获取所有数据
+          const url = `https://zsmwcrgsaamslzuvscug.supabase.co/rest/v1/soil_list?select=*&order=date.desc`;
+          
+          try {
+            const response = await fetch(url, {
+              headers: {
+                'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA',  // 替换为你的实际 API Key
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA'
+              }
+            });
             
-            const url = `https://zsmwcrgsaamslzuvscug.supabase.co/rest/v1/soil_list?select=*&order=date.desc&limit=${itemsPerPage}&offset=${offset}`;
-            try {
-                const response = await fetch(url, {
-                    headers: {
-                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA',  // 替换为你的实际 API Key
-                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA'
-                    }
-                });
-                console.log(response);
-                if (!response.ok) {
-                    throw new Error('网络响应错误: ' + response.statusText);
-                }
-                const data = await response.json();
-                
-                // 渲染动态公告列表
-                announcementListContainer.innerHTML = '';
-                data.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'list-group-item';
-                    div.innerHTML = `
-                        <h5 class="mb-1">${item.project_name}</h5>
-                        <p class="mb-0">${item.date || ''}</p>
-                        <a href="detail.html?id=${item.id}" class="btn btn-primary btn-sm mt-2">查看详情</a>
-                    `;
-                    announcementListContainer.appendChild(div);
-                });
-                
-                // 获取总记录数（通过响应头 content-range，前提是你的 Supabase 配置返回此 header）
-                const contentRange = response.headers.get('content-range'); // 格式例如 "items 0-19/totalCount"
-                let totalCount = 0;
-                if (contentRange) {
-                    const parts = contentRange.split('/');
-                    totalCount = parseInt(parts[1]);
-                }
-                
-                updatePagination(totalCount, currentPage, itemsPerPage);
-            } catch (error) {
-                console.error('获取公告失败:', error);
+            if (!response.ok) {
+              throw new Error('网络响应错误: ' + response.statusText);
             }
-        }
-    
-        function updatePagination(totalItems, currentPage, itemsPerPage) {
-            const totalPages = Math.ceil(totalItems / itemsPerPage);
-            paginationContainer.innerHTML = '';
             
-            if (totalPages > 1) {
-                for (let i = 1; i <= totalPages; i++) {
-                    const li = document.createElement('li');
-                    li.className = 'page-item' + (i === currentPage ? ' active' : '');
-                    li.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="fetchAnnouncements(${i})">${i}</a>`;
-                    paginationContainer.appendChild(li);
-                }
+            const data = await response.json();
+            // 按项目名称进行分组（假设字段名为 project_name）
+            const groups = {};
+            data.forEach(item => {
+              const key = item.project_name || '未命名项目';
+              if (!groups[key]) {
+                groups[key] = [];
+              }
+              groups[key].push(item);
+            });
+            
+            // 渲染到页面，每个项目名称一个卡片列
+            const container = document.getElementById('supabase-announcement-list');
+            container.innerHTML = ''; // 清空容器
+            
+            // 遍历分组数据
+            for (const project in groups) {
+              // 创建一个列容器，这里采用 Bootstrap 栅格布局（例如每行3列，每列 col-md-4）
+              const col = document.createElement('div');
+              col.className = 'col-md-4 mb-3';
+              
+              // 使用 Card 组件展示信息
+              let cardHTML = `
+                <div class="card h-100">
+                  <div class="card-header bg-success text-white">
+                    ${project}
+                  </div>
+                  <ul class="list-group list-group-flush">
+              `;
+              
+              groups[project].forEach(item => {
+                cardHTML += `
+                  <li class="list-group-item">
+                    <p class="mb-1">${item.date || ''}</p>
+                    <a href="detail.html?id=${item.id}" class="btn btn-primary btn-sm">查看详情</a>
+                  </li>
+                `;
+              });
+              cardHTML += `
+                  </ul>
+                </div>
+              `;
+              
+              col.innerHTML = cardHTML;
+              container.appendChild(col);
             }
+          } catch (error) {
+            console.error('获取公告失败:', error);
+          }
         }
-    
-        // 页面加载时获取第一页数据
-        fetchAnnouncements(currentPage);
-    </script>
+        
+        // 页面加载时获取所有数据
+        fetchAllAnnouncements();
+      </script>
     
 
 </body>
