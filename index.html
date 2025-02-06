@@ -95,7 +95,7 @@
             currentPage = page;
             const offset = (page - 1) * itemsPerPage;
             
-            const url = `https://zsmwcrgsaamslzuvscug.supabase.co`;
+            const url = `https://zsmwcrgsaamslzuvscug.supabase.co/rest/v1/soil_list?select=*&order=date.desc&limit=${itemsPerPage}&offset=${offset}`;
             try {
                 const response = await fetch(url, {
                     headers: {
@@ -103,6 +103,7 @@
                         'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA'
                     }
                 });
+                console.log(response);
                 if (!response.ok) {
                     throw new Error('网络响应错误: ' + response.statusText);
                 }
