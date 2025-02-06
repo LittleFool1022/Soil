@@ -40,6 +40,25 @@ h2 {
     text-align: center; 
 }
 
-.list-group {
-    margin-top: 30px;
+.list-group-item {
+    display: block;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 0.25rem;
+    text-decoration: none;
+    color: #333; 
+    transition: color 0.3s ease; 
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa; 
+}
+
+.list-group-item h5, .list-group-item p {
+    color: inherit; 
+    transition: color 0.3s ease; 
+}
+
+.list-group-item:hover h5, .list-group-item:hover p {
+    color: #6c757d; 
 }
