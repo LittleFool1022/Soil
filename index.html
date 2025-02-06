@@ -46,8 +46,14 @@
 
         <section id="news" class="mb-5">
             <h2 class="text-success">最新公示公告</h2>
+            <!-- 新增用于动态加载 Supabase 公告的容器 -->
+            <div id="supabase-announcement-list" class="list-group mb-3"></div>
+            <!-- 分页按钮容器 -->
+            <nav>
+                <ul id="pagination" class="pagination justify-content-center"></ul>
+            </nav>
+            <!-- 保留原有静态公告展示 -->
             <div class="list-group">
-                <!-- 假设有多个公告 -->
                 <a href="detail.html?id=1" class="list-group-item">
                     <h5 class="mb-1">2024年XX项目水土保持方案公示</h5>
                 </a>
@@ -57,6 +63,7 @@
                 <!-- 更多公告 -->
             </div>
         </section>
+        
 
         <section id="laws" class="mt-5">
             <h2 class="text-success">政策法规</h2>
@@ -81,56 +88,71 @@
     <script>
         let currentPage = 1;
         const itemsPerPage = 20;
-        const公告列表容器 = document.querySelector('#announcement-list');
-        const分页容器 = document.querySelector('#pagination');
-
-        function fetchAnnouncements(page) {
-            fetch(`https://zsmwcrgsaamslzuvscug.supabase.co/rest/v1/soil_list?page=${page}&limit=${itemsPerPage}`, {
-                method: 'GET',
-                headers: {
-                    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok ' + response.statusText);
-                }
-                return response.json();
-            })
-            .then(data => {
-                公告列表容器.innerHTML = '';
-                data.forEach(item => {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item';
-                    li.innerHTML = `<h5 class="mb-1">${item.project_name}</h5><p class="mb-0">${item.date}</p><a href="detail.html?id=${item.id}" class="btn btn-primary">查看详情</a>`;
-                    公告列表容器.appendChild(li);
+        const announcementListContainer = document.getElementById('supabase-announcement-list');
+        const paginationContainer = document.getElementById('pagination');
+    
+        async function fetchAnnouncements(page) {
+            currentPage = page;
+            const offset = (page - 1) * itemsPerPage;
+            
+            const url = `https://zsmwcrgsaamslzuvscug.supabase.co/rest/v1/soil_list?select=*&order=date.desc&limit=${itemsPerPage}&offset=${offset}`;
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA',  // 替换为你的实际 API Key
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA'
+                    }
                 });
-                updatePagination(data.length, page, itemsPerPage);
-            })
-            .catch(error => console.error('Error fetching public list:', error));
+                if (!response.ok) {
+                    throw new Error('网络响应错误: ' + response.statusText);
+                }
+                const data = await response.json();
+                
+                // 渲染动态公告列表
+                announcementListContainer.innerHTML = '';
+                data.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'list-group-item';
+                    div.innerHTML = `
+                        <h5 class="mb-1">${item.project_name}</h5>
+                        <p class="mb-0">${item.date || ''}</p>
+                        <a href="detail.html?id=${item.id}" class="btn btn-primary btn-sm mt-2">查看详情</a>
+                    `;
+                    announcementListContainer.appendChild(div);
+                });
+                
+                // 获取总记录数（通过响应头 content-range，前提是你的 Supabase 配置返回此 header）
+                const contentRange = response.headers.get('content-range'); // 格式例如 "items 0-19/totalCount"
+                let totalCount = 0;
+                if (contentRange) {
+                    const parts = contentRange.split('/');
+                    totalCount = parseInt(parts[1]);
+                }
+                
+                updatePagination(totalCount, currentPage, itemsPerPage);
+            } catch (error) {
+                console.error('获取公告失败:', error);
+            }
         }
-
+    
         function updatePagination(totalItems, currentPage, itemsPerPage) {
             const totalPages = Math.ceil(totalItems / itemsPerPage);
-            分页容器.innerHTML = '';
+            paginationContainer.innerHTML = '';
+            
             if (totalPages > 1) {
                 for (let i = 1; i <= totalPages; i++) {
                     const li = document.createElement('li');
-                    li.className = 'page-item';
-                    if (i === currentPage) {
-                        li.className += ' active';
-                        li.innerHTML = `<span class="page-link">${i}</span>`;
-                    } else {
-                        li.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="fetchAnnouncements(${i})">${i}</a>`;
-                    }
-                    分页容器.appendChild(li);
+                    li.className = 'page-item' + (i === currentPage ? ' active' : '');
+                    li.innerHTML = `<a class="page-link" href="javascript:void(0)" onclick="fetchAnnouncements(${i})">${i}</a>`;
+                    paginationContainer.appendChild(li);
                 }
             }
         }
-
-        // 初始化加载第一页数据
+    
+        // 页面加载时获取第一页数据
         fetchAnnouncements(currentPage);
     </script>
+    
 
 </body>
 </html>
