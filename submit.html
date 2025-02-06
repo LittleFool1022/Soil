@@ -19,13 +19,21 @@
             margin-left: 3px;
         }
     </style>
-    <!-- 在head中添加Supabase客户端 -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
+    <script type="module">
+        // 导入Supabase客户端
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+        // 初始化客户端 (确保没有特殊字符)
         const supabase = createClient(
             'https://zsmwcrgsaamslzuvscug.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg3NDA1OTksImV4cCI6MjA1NDMxNjU5OX0.UCwIvCoEOuGxva10JIS2oAwZQ-trykJL1pwgQLn3eQ4'
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzbXdjcmdzYWFtc2x6dXZzY3VnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczODc0MDU5OSwiZXhwIjoyMDU0MzE2NTk5fQ.IxNArEl8cJg4HMNZeHYMirzfXaQeDuvLuYLjX5b4GQA'
         );
+
+        // 暴露到全局作用域以便其他脚本访问
+        window.supabase = supabase;
+        
+        // 调试语句
+        //console.log('Supabase初始化完成:', window.supabase);
     </script>
 </head>
 <body>
@@ -66,49 +74,52 @@
     </div>
 
     <script>
-    document.getElementById('submitForm').addEventListener('submit', async (event) => {
-        event.preventDefault();
-        
-        const formData = new FormData(event.target);
-        const file = formData.get('document');
-
-        try {
-            // 上传文件到Storage
-            const fileName = `${Date.now()}_${file.name}`;
-            const { data: fileData, error: uploadError } = await supabase.storage
-                .from('documents') // 存储桶名称
-                .upload(fileName, file);
-
-            if (uploadError) throw uploadError;
-
-            // 获取文件公共URL
-            const { data: urlData } = supabase.storage
-                .from('documents')
-                .getPublicUrl(fileData.path);
-
-            // 准备提交数据
-            const submissionData = {
-                project_name: formData.get('project_name'),
-                company: formData.get('company'),
-                contact_person: formData.get('contact_person'),
-                phone: formData.get('phone'),
-                document_url: urlData.publicUrl // 存储文件URL
-            };
-
-            // 插入数据到数据库
-            const { data, error } = await supabase
-                .from('soil_list')
-                .insert([submissionData])
-                .select();
-
-            if (error) throw error;
+        document.getElementById('submitForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
             
-            window.location.href = '/success.html';
-        } catch (error) {
-            console.error('提交失败:', error);
-            alert(`提交失败: ${error.message}`);
-        }
-    });
+            try {
+                // 调试：确保能访问supabase
+                //console.log('提交时supabase状态:', window.supabase);
+    
+                const formData = new FormData(event.target);
+                const file = formData.get('document');
+    
+                // 上传文件到Storage
+                const fileName = `${Date.now()}_${file.name}`;
+                const { data: fileData, error: uploadError } = await window.supabase.storage
+                    .from('documents')
+                    .upload(fileName, file);
+    
+                if (uploadError) throw uploadError;
+    
+                // 获取文件公共URL
+                const { data: urlData } = window.supabase.storage
+                    .from('documents')
+                    .getPublicUrl(fileData.path);
+    
+                // 准备提交数据
+                const submissionData = {
+                    project_name: formData.get('project_name'),
+                    company: formData.get('company'),
+                    contact_person: formData.get('contact_person'),
+                    phone: formData.get('phone'),
+                    document_url: urlData.publicUrl
+                };
+    
+                // 插入数据到数据库
+                const { data, error } = await window.supabase
+                    .from('soil_list')
+                    .insert([submissionData])
+                    .select();
+    
+                if (error) throw error;
+                
+                window.location.href = '/success.html';
+            } catch (error) {
+                console.error('提交失败:', error);
+                alert(`提交失败: ${error.message}`);
+            }
+        });
     </script>
 </body>
 </html>
