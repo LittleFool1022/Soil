@@ -1,0 +1,61 @@
+{
+  "name": "project-submission",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint"
+  },
+  "dependencies": {
+    "@eslint/config-array": "^0.19.2",
+    "@eslint/object-schema": "^2.1.6",
+    "@supabase/supabase-js": "^2.48.1",
+    "core-js": "^3.8.3",
+    "eslint": "^8.57.1",
+    "glob": "^11.0.1",
+    "vue": "^3.2.13",
+    "vue-router": "^4.5.0",
+    "webpack-dev-middleware": "^7.4.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.16",
+    "@babel/eslint-parser": "^7.12.16",
+    "@vue/cli-plugin-babel": "^5.0.8",
+    "@vue/cli-plugin-eslint": "^5.0.8",
+    "@vue/cli-service": "^5.0.8",
+    "@vue/compiler-sfc": "^3.5.13",
+    "cross-spawn": "^7.0.5",
+    "eslint-plugin-vue": "^9.32.0",
+    "execa": "^9.5.2",
+    "rimraf": "^6.0.1"
+  },
+  "overrides": {
+    "postcss": "^8.4.30",
+    "vue-template-compiler": "^2.7.16",
+    "cross-spawn": "^7.0.5"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true
+    },
+    "extends": [
+      "plugin:vue/vue3-essential",
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "parser": "@babel/eslint-parser"
+    },
+    "rules": {
+      "vue/multi-word-component-names": "off",
+      "no-unused-vars": "off"
+    }
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
+}
