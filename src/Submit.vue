@@ -24,6 +24,7 @@
         <div v-if="showReminder" class="reminder">
           {{ reminderText }}
         </div>
+        <button @click="submitForm">提交项目</button>
       </div>
     </div>
   </div>
@@ -31,12 +32,17 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import axios from 'axios'; // Import axios
 
 const formData = ref({});
 const showReminder = ref(false);
 const reminderText = ref('');
+
 const baseUrl = 'https://cli.avuejs.com/api/area';
-const action = 'https://api.avuejs.com/imgupload';
+// 修改附件上传 action 为上传接口
+const uploadAction = 'http://localhost:3000/api/upload';
+// 项目提交接口
+const submitAction  = 'http://localhost:3000/api/projects';
 
 const form = ref({
   province: '110000',
@@ -82,7 +88,6 @@ const formOption = ref({
       label: '编制单位',
       prop: 'CompilationUnit',
       type: 'input',
-      
       rules: [{ required: true, message: '编制单位不为空，验收报告和水保方案填各自编制单位', trigger: 'blur' }]
     },
     {
@@ -169,15 +174,70 @@ const formOption = ref({
       fileSize: 20000,
       span: 24,
       propsHttp: {
-        url: 'url',
-        name: 'name',
-        res: 'data'
+        name: 'name',    // 与后端 multer.single('file') 中的字段名对应
+        url: 'url',      // 返回数据中 url 字段值
+        res: 'data'      // 上传接口返回的数据在 data 中
       },
-      action,
+      action: uploadAction,
       rules: [{ required: true, message: '附件不为空', trigger: 'blur' }]
     }
   ]
 });
+
+// 提交表单方法
+const submitForm = async () => {
+  // 使用 FormData 用于 multipart/form-data 格式提交数据和文件
+  const form = new FormData();
+
+  // 处理常规字段
+  // 将表单中除附件上传外的字段加入 FormData
+  for (const key in formData.value) {
+    if (key !== 'pdfUrl' && key !== 'datetimerange') {
+      form.append(key, formData.value[key]);
+    }
+  }
+  // 将 datetimerange 数组转换为 start_time 和 end_time 字段
+  if (formData.value.datetimerange && formData.value.datetimerange.length === 2) {
+    form.append('start_time', formData.value.datetimerange[0]);
+    form.append('end_time', formData.value.datetimerange[1]);
+  }
+  // 将附件上传的文件添加到 FormData 中（字段名为 files，与后端 multer 配置一致）
+  if (formData.value.pdfUrl && formData.value.pdfUrl.length > 0) {
+      formData.value.pdfUrl.forEach(fileObj => {
+          form.append('files', fileObj.raw);
+      });
+  }
+
+  try {
+      const response = await axios.post(submitAction, form, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (response.data.id) {
+          alert('项目提交成功！');
+          // 假设 avue - form 有重置验证的方法，这里根据实际情况调用
+          const uploadedFiles = response.data.files || [];
+          formData.value.pdfUrl = formData.value.pdfUrl.concat(uploadedFiles.map(file => ({
+              // 根据实际情况调整对象结构
+              name: file.name,
+              url: file.url
+        })));
+      }
+  } catch (error) {
+      if (error.response) {
+          const status = error.response.status;
+          if (status === 400) {
+              alert('请求参数错误，请检查输入！');
+          } else if (status === 500) {
+              alert('服务器内部错误，请稍后再试！');
+          } else {
+              alert('提交失败，状态码：' + status);
+          }
+      } else {
+          console.error('提交失败:', error);
+          alert('项目提交失败，请检查网络连接！');
+      }
+  }
+};
 
 // 处理表单变化事件
 const handleFormChange = (value, form) => {
@@ -219,6 +279,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
+
+/* 可以根据实际情况调整样式 */
+.avue-form .avue-upload-list {
+    display: block;
+}
 
 .app-container {
   position: relative;

@@ -16,12 +16,16 @@
             <li class="nav-item">
               <router-link class="nav-link" to="/">首页</router-link>
             </li>
+            
           </ul>
         </div>
       </div>
     </nav>
     <div class="container">
       <div class="form-container">
+        <li class="nav-item">
+          <button class="btn btn-success" @click="goToSubmit">我要公示</button>
+        </li>
         <!-- 搜索表单 -->
         <avue-crud
           :option="option"
@@ -36,6 +40,14 @@
             <el-button @click="onReset">重置</el-button>
           </template>
         </avue-crud>
+        <div class="search-results">
+          <div v-for="item in searchResults" :key="item.id" 
+              class="result-item" @click="viewDetail(item.id)">
+            <h5>{{ item.project_name }}</h5>
+            <p>{{ item.province }}-{{ item.city }}-{{ item.area }}</p>
+            <p>开始时间：{{ formatDate(item.start_time) }}</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -43,113 +55,166 @@
 
 <script setup>
 import { ref } from "vue";
+import { useRouter } from 'vue-router';
+import axios from 'axios';
+const baseUrl = 'https://cli.avuejs.com/api/area';
+
+const router = useRouter();
+const searchResults = ref([]);
+
+const form = ref({
+  province: '110000',
+  city: '110100',
+  area: '110101',
+  imgUrl: []
+});
 
 // 模拟数据
 const data = ref([
-  {
-    projectName: "项目1",
-    startTime: "2024-10-01",
-    endTime: "2024-10-10",
-    projectTypeMain: "类型A",
-    projectTypeSub: "子类型1",
-    province: "省份A",
-    city: "城市A",
-    district: "区县A",
-  },
 ]);
 
 // 搜索表单数据绑定
 const formData = ref({
   projectName: "",
-  startTime: "",
-  endTime: "",
-  projectTypeMain: "",
-  projectTypeSub: "",
+  projectType: "",
+  datetime: "",
   province: "",
   city: "",
-  district: "",
+  area: "",
 });
+
+const onSearch = async () => {
+  try {
+    const res = await axios.get('/api/projects', {
+      params: formData.value
+    });
+    searchResults.value = res.data;
+  } catch (error) {
+    console.error('搜索失败:', error);
+  }
+};
+
+const viewDetail = (id) => {
+  router.push(`/detail/${id}`);
+};
+
+const formatDate = (dateStr) => {
+  return new Date(dateStr).toLocaleDateString();
+};
+
+const goToSubmit = () => {
+  router.push('/submit');  // 跳转到 Submit.vue 页面
+};
 
 // Avue 配置
 const option = ref({
+  addBtn: false, // 关闭新增按钮
+  refreshBtn: false,//关闭刷新按钮
+  columnBtn: false,//关闭列显隐按钮
+  editBtn: false,//关闭行内编辑按钮
+  delBtn: false,//关闭行能删除按钮
+  stripe: false,//是否显示表格的斑马条纹
+  menu: false, // 关闭操作列
+
   column: [
     {
       label: "项目名称",
       prop: "projectName",
       search: true,
+      searchSpan: 24,
+      searchRange: true,
       placeholder: "请输入项目名称",
+    },
+    {
+      label: "公示类型",
+      prop: "projectType",
+      type: "select",
+      search: true,
+      searchSpan: 8,
+      hide: true, // 仅隐藏在表格中，表单仍然可见
+      dicData: [
+        { label: '默认公示' },
+        { label: '验收公示', value: 'B' },
+        { label: '检测公示', value: 'C' },
+        { label: '方案公示', value: 'D' },
+        { label: '其他公示', value: 'E' }
+      ]
     },
     {
       label: "公示时间",
       prop: "time",
       type: "datetime",
       search: true,
-      searchSpan: 18,
+      searchSpan: 16,
       searchRange: true,
       value: ["startTime", "endTime"],
     },
     {
-      label: "项目类型",
-      prop: "projectType",
-      type: "select",
+      label: '项目位置',
+      prop: 'province',
+      type: 'select',
       search: true,
-      dicData: [
-        { label: "类型A", value: "A" },
-        { label: "类型B", value: "B" },
-      ],
-      children: [
+      searchSpan: 8,
+      hide: true, // 仅隐藏在表格中，表单仍然可见
+      props: {
+        label: 'name',
+        value: 'code'
+      },
+      cascader: ['city'],
+      dicUrl: `${baseUrl}/getProvince`,
+      placeholder: '请选择省市',
+      rules: [
         {
-          label: "项目子类",
-          prop: "projectTypeSub",
-          type: "select",
-          search: true,
-          dicData: [
-            { label: "子类型1", value: "1" },
-            { label: "子类型2", value: "2" },
-          ],
-        },
-      ],
+          required: true,
+          message: '请选择省市',
+          trigger: 'blur'
+        }
+      ]
     },
     {
-      label: "项目位置",
-      prop: "location",
-      type: "select",
+      prop: 'city',
+      type: 'select',
       search: true,
-      dicData: [
-        { label: "省份A", value: "A" },
-        { label: "省份B", value: "B" },
-      ],
-      children: [
+      searchSpan: 8,
+      hide: true, // 仅隐藏在表格中，表单仍然可见
+      cascader: ['area'],
+      props: {
+        label: 'name',
+        value: 'code'
+      },
+      dicUrl: `${baseUrl}/getCity/{{key}}`,
+      placeholder: '请选择城市',
+      rules: [
         {
-          label: "市",
-          prop: "city",
-          type: "select",
-          search: true,
-          dicData: [
-            { label: "城市A", value: "A" },
-            { label: "城市B", value: "B" },
-          ],
-        },
-        {
-          label: "县/区",
-          prop: "district",
-          type: "select",
-          search: true,
-          dicData: [
-            { label: "区县A", value: "A" },
-            { label: "区县B", value: "B" },
-          ],
-        },
-      ],
+          required: true,
+          message: '请选择城市',
+          trigger: 'blur'
+        }
+      ]
     },
+    {
+      prop: 'area',
+      type: 'select',
+      search: true,
+      searchSpan: 8,
+      hide: true, // 仅隐藏在表格中，表单仍然可见
+      props: {
+        label: 'name',
+        value: 'code'
+      },
+      dicUrl: `${baseUrl}/getArea/{{key}}`,
+      placeholder: '请选择地区',
+      rules: [
+        {
+          required: true,
+          message: '请选择地区',
+          trigger: 'blur'
+        }
+      ]
+    }
   ]
 });
 
-// 搜索事件
-const onSearch = () => {
-  console.log("搜索条件：", formData.value);
-  // 在这里可以调用 API 获取数据
-};
 
 // 重置事件
 const onReset = () => {
@@ -168,13 +233,29 @@ const onReset = () => {
 </script>
 
 <style scoped>
+.search-results {
+  margin-top: 20px;
+}
+
+.result-item {
+  padding: 15px;
+  border: 1px solid #eee;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.result-item:hover {
+  background: #f8f9fa;
+}
+
 .app-container {
   position: relative;
   min-height: 100vh;
 }
 
 .form-container {
-  max-width: 800px;
+  max-width: 1200px;
   margin: 300px auto;
   padding: 20px;
   border: 1px solid #ddd;
