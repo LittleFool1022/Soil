@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const multer = require('multer');
 const mysql = require('mysql2');
@@ -10,130 +9,170 @@ const morgan = require('morgan');
 
 const app = express();
 app.use(cors());
-// 用于处理 JSON 格式的请求体
 app.use(express.json());
-// 用于解析 urlencoded 数据（如果需要）
 app.use(express.urlencoded({ extended: true }));
-
-// 静态资源：上传后的文件
 app.use('/uploads', express.static('uploads'));
-
-// 日志中间件
 app.use(morgan('dev'));
 
-// 确保 uploads 目录存在
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+    fs.mkdirSync(uploadDir);
 }
 
-// 数据库连接
 const pool = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: 'QiQi1213@',
-  database: 'project_db',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+    host: 'localhost',
+    user: 'root',
+    password: 'QiQi1213@',
+    database: 'project_db',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-// 文件上传配置（与之前类似）
+// 文件上传配置
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    // 解码文件名并拼接时间戳，确保唯一性
-    const decodedFilename = iconv.decode(Buffer.from(file.originalname, 'binary'), 'utf8');
-    cb(null, Date.now() + path.extname(decodedFilename));
-  }
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        const decodedFilename = iconv.decode(Buffer.from(file.originalname, 'binary'), 'utf8');
+        const sanitizedFilename = decodedFilename.replace(/\s/g, '');
+        const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, -3); // 精确到秒的时间戳
+        const newFilename = `${timestamp}-${sanitizedFilename}`;
+        cb(null, newFilename);
+    }
 });
+
 const upload = multer({
-  storage: storage,
-  limits: { fileSize: 1024 * 1024 * 20 } // 限制20MB
+    storage: storage,
+    limits: { fileSize: 1024 * 1024 * 20 } // 限制20MB
 });
 
 // 上传接口：仅处理文件上传，返回文件 URL
 app.post('/api/upload', upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-  // 对原始文件名进行解码（可选）
-  const decodedFilename = iconv.decode(Buffer.from(req.file.originalname, 'binary'), 'utf8');
-  const fileUrl = `/uploads/${req.file.filename}`;
-  // 返回数据结构需与前端 avue-form 的 propsHttp 配置对应
-  res.json({ data: { url: fileUrl, name: decodedFilename } });
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const decodedFilename = iconv.decode(Buffer.from(req.file.originalname, 'binary'), 'utf8');
+    const sanitizedFilename = decodedFilename.replace(/\s/g, '');
+    const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, -3); // 精确到秒的时间戳
+    const newFilename = `${timestamp}-${sanitizedFilename}`;
+    const fileUrl = `/uploads/${newFilename}`;
+
+    res.json({ data: { url: fileUrl, name: newFilename } });
 });
 
-// 项目提交接口：不再处理文件，而是接收包含附件 URL 的 JSON 数据
-app.post('/api/projects', (req, res) => {
-  const { body } = req;
-  // 假设附件信息保存在 pdfUrl 字段中，
-  // pdfUrl 可能为对象数组（例如：[ { name, url }, ... ]），存入数据库时只存 URL
-  let pdfUrls = [];
-  if (body.pdfUrl) {
-    pdfUrls = Array.isArray(body.pdfUrl) ? body.pdfUrl : [body.pdfUrl];
+// 删除文件接口
+app.delete('/api/upload/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(uploadDir, filename);
+  const fullUrl = `/uploads/${filename}`;
+  if (fs.existsSync(filePath)) {
+      fs.unlink(filePath, (err) => {
+          if (err) {
+              console.error('Error deleting file:', err);
+              return res.status(500).json({ error: 'Internal Server Error' });
+          }
+          // 同时从数据库中删除记录
+          const deleteSql = 'DELETE FROM file_info WHERE full_url =?';
+          pool.query(deleteSql, [fullUrl], (deleteErr, deleteResult) => {
+              if (deleteErr) {
+                  console.error('Database delete error:', deleteErr);
+                  return res.status(500).json({ error: 'Internal Server Error' });
+              }
+              res.json({ message: 'File deleted successfully' });
+          });
+      });
+  } else {
+      res.status(404).json({ error: 'File not found' });
   }
-  const sql = 'INSERT INTO projects SET ?';
-  const values = {
-    ...body,
-    // 将附件 URL 数组转换为 JSON 字符串进行存储
-    pdf_urls: JSON.stringify(pdfUrls.map(item => (item.url || item))),
-    start_time: new Date(body.start_time),
-    end_time: new Date(body.end_time)
-  };
-  pool.query(sql, values, (err, result) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ error: 'Internal Server Error' });
+});
+
+
+// 项目提交接口：不再处理文件，而是接收包含附件 URL 的 JSON 数据
+app.post('/api/projects', upload.any(), (req, res) => {
+  const { body } = req;
+  let pdfUrl = [];
+  if (body.pdfUrl) {
+    try {
+        pdfUrl = JSON.parse(body.pdfUrl); // 只有在是有效的 JSON 字符串时才解析
+    } catch (error) {
+        // 如果已经是字符串，直接当做数组来处理
+        pdfUrl = [body.pdfUrl];
     }
-    res.json({ id: result.insertId });
+    console.log(pdfUrl);
+  }
+  const startDate = body.startDate;
+  const endDate = body.endDate;
+
+  // 过滤不必要的字段
+  const filteredBody = {
+    projectType: body.$projectType,
+    projectName: body.projectName,
+    constructionUnit: body.constructionUnit,
+    compilationUnit: body.compilationUnit,
+    province: body.$province,
+    city: body.$city,
+    area: body.$area,
+    description: body.description,
+    startDate: new Date(startDate),
+    endDate: new Date(endDate),
+    pdfUrl: JSON.stringify(pdfUrl) // 将 URL 数组转换为 JSON 字符串
+  };
+
+  const sql = 'INSERT INTO projects SET?';
+  pool.query(sql, filteredBody, (err, result) => {
+      if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Internal Server Error' });
+      }
+      res.json({ id: result.insertId });
   });
 });
 
 // 其他接口（如项目查询等）保持不变
 app.get('/api/projects', (req, res) => {
-  const { projectName, province, city, area } = req.query;
-  let sql = `SELECT id, project_name, province, city, area, start_time FROM projects WHERE 1=1`;
-  const params = [];
-  if (projectName) {
-    sql += ` AND project_name LIKE ?`;
-    params.push(`%${projectName}%`);
-  }
-  if (province) {
-    sql += ` AND province = ?`;
-    params.push(province);
-  }
-  if (city) {
-    sql += ` AND city = ?`;
-    params.push(city);
-  }
-  if (area) {
-    sql += ` AND area = ?`;
-    params.push(area);
-  }
-  pool.query(sql, params, (err, results) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ error: 'Internal Server Error' });
+    const { projectName, province, city, area } = req.query;
+    let sql = 'SELECT id, projectType, projectName, province, city, area, startDate, endDate FROM projects WHERE 1 = 1';
+    const params = [];
+    if (projectName) {
+        sql += ' AND project_name LIKE?';
+        params.push(`%${projectName}%`);
     }
-    res.json(results);
-  });
+    if (province) {
+        sql += ' AND province =?';
+        params.push(province);
+    }
+    if (city) {
+        sql += ' AND city =?';
+        params.push(city);
+    }
+    if (area) {
+        sql += ' AND area =?';
+        params.push(area);
+    }
+    pool.query(sql, params, (err, results) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
+        res.json(results);
+    });
 });
 
 app.get('/api/projects/:id', (req, res) => {
-  const sql = `SELECT * FROM projects WHERE id = ?`;
-  pool.query(sql, [req.params.id], (err, results) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ error: 'Internal Server Error' });
-    }
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-    res.json(results[0]);
-  });
+    const sql = 'SELECT * FROM projects WHERE id =?';
+    pool.query(sql, [req.params.id], (err, results) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Internal Server Error' });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+        res.json(results[0]);
+    });
 });
 
 const port = 3000;

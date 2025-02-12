@@ -23,9 +23,9 @@
     </nav>
     <div class="container">
       <div class="form-container">
-        <li class="nav-item">
-          <button class="btn btn-success" @click="goToSubmit">我要公示</button>
-        </li>
+        <div class="text-center">
+          <button class="btn btn-success" @click="goToSubmit" style="width: 300px; margin-top: 20px; margin-bottom: 20px;">我要公示</button>
+        </div>
         <!-- 搜索表单 -->
         <avue-crud
           :option="option"
@@ -54,7 +54,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref , onMounted } from "vue";
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 const baseUrl = 'https://cli.avuejs.com/api/area';
@@ -75,9 +75,10 @@ const data = ref([
 
 // 搜索表单数据绑定
 const formData = ref({
-  projectName: "",
   projectType: "",
-  datetime: "",
+  projectName: "",
+  startDate: "",
+  endDate: "",
   province: "",
   city: "",
   area: "",
@@ -142,12 +143,12 @@ const option = ref({
     },
     {
       label: "公示时间",
-      prop: "time",
-      type: "datetime",
+      prop: "daterange",
+      type: "daterange",
       search: true,
       searchSpan: 16,
       searchRange: true,
-      value: ["startTime", "endTime"],
+      value: ["startDate", "endDate"],
     },
     {
       label: '项目位置',
@@ -219,17 +220,27 @@ const option = ref({
 // 重置事件
 const onReset = () => {
   formData.value = {
+    projectType: "",
     projectName: "",
-    startTime: "",
-    endTime: "",
-    projectTypeMain: "",
-    projectTypeSub: "",
+    startDate: "",
+    endDate: "",
     province: "",
     city: "",
-    district: "",
+    area: "",
   };
-  console.log("重置表单：", formData.value);
+//  console.log("重置表单：", formData.value);
 };
+
+// 页面加载时获取所有项目数据
+onMounted(async () => {
+  try {
+    const res = await axios.get('/api/projects');
+    searchResults.value = res.data;
+  } catch (error) {
+    console.error('获取项目数据失败:', error);
+  }
+});
+
 </script>
 
 <style scoped>

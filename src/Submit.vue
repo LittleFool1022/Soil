@@ -24,14 +24,17 @@
         <div v-if="showReminder" class="reminder">
           {{ reminderText }}
         </div>
-        <button @click="submitForm">提交项目</button>
-      </div>
+          <div class="text-center">  <!-- 使用 text-center 类居中 -->
+            <button class="btn btn-success" @click="submitForm" style="width: 300px; margin-top: 20px;">确认提交</button>
+          </div>
+        </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import axios from 'axios'; // Import axios
 
 const formData = ref({});
@@ -39,10 +42,12 @@ const showReminder = ref(false);
 const reminderText = ref('');
 
 const baseUrl = 'https://cli.avuejs.com/api/area';
-// 修改附件上传 action 为上传接口
 const uploadAction = 'http://localhost:3000/api/upload';
-// 项目提交接口
 const submitAction  = 'http://localhost:3000/api/projects';
+const deleteFileAction = 'http://localhost:3000/api/upload'; 
+
+
+const router = useRouter(); // 使用 router
 
 const form = ref({
   province: '110000',
@@ -54,6 +59,7 @@ const form = ref({
 const formOption = ref({
   labelWidth: '100px', // 让表单标签宽度一致
   gutter: 20, // 控制列之间的间距
+  submitBtn: false,
   column: [
     {
       label: '公示类型',
@@ -86,7 +92,7 @@ const formOption = ref({
     },
     {
       label: '编制单位',
-      prop: 'CompilationUnit',
+      prop: 'compilationUnit',
       type: 'input',
       rules: [{ required: true, message: '编制单位不为空，验收报告和水保方案填各自编制单位', trigger: 'blur' }]
     },
@@ -148,15 +154,15 @@ const formOption = ref({
       ]
     },
     {
-      label: "起止时间",
-      type: 'datetimerange',
-      prop: 'datetimerange',
+      label: "起止日期",
+      prop: "daterange",
+      type: "daterange",
+      format: 'YYYY-MM-DD',
       span: 24,
-      format: 'YYYY-MM-DD HH:mm:ss',
-      valueFormat: 'YYYY-MM-DD HH:mm:ss',
-      startPlaceholder: '开始时间',
-      endPlaceholder: '结束时间',
-      rules: [{ required: true, message: '起止时间不为空', trigger: 'blur' }]
+      valueFormat: 'YYYY-MM-DD',
+      startPlaceholder: '开始日期',
+      endPlaceholder: '结束日期',
+      rules: [{ required: true, message: '起止日期不为空', trigger: 'blur' }]
     },
     {
       label: '项目说明',
@@ -192,20 +198,30 @@ const submitForm = async () => {
   // 处理常规字段
   // 将表单中除附件上传外的字段加入 FormData
   for (const key in formData.value) {
-    if (key !== 'pdfUrl' && key !== 'datetimerange') {
+    if (key !== 'pdfUrl' && key !== 'daterange') {
       form.append(key, formData.value[key]);
     }
   }
-  // 将 datetimerange 数组转换为 start_time 和 end_time 字段
-  if (formData.value.datetimerange && formData.value.datetimerange.length === 2) {
-    form.append('start_time', formData.value.datetimerange[0]);
-    form.append('end_time', formData.value.datetimerange[1]);
+  // 处理日期范围
+  if (formData.value.daterange && formData.value.daterange.length === 2) {
+      const [startDate, endDate] = formData.value.daterange;
+      form.append('startDate', startDate);
+      form.append('endDate', endDate);
+  } else {
+      console.log('日期范围数据无效');
+      return;
   }
-  // 将附件上传的文件添加到 FormData 中（字段名为 files，与后端 multer 配置一致）
+  // 处理附件上传
   if (formData.value.pdfUrl && formData.value.pdfUrl.length > 0) {
-      formData.value.pdfUrl.forEach(fileObj => {
-          form.append('files', fileObj.raw);
-      });
+    // 确保 pdfUrl 是数组格式，如果是字符串，转为数组
+    const pdfUrls = Array.isArray(formData.value.pdfUrl) ? formData.value.pdfUrl : [formData.value.pdfUrl];
+    // 转换为 JSON 字符串
+    form.append('pdfUrl', JSON.stringify(pdfUrls));
+  }
+
+  // 打印 FormData 内容进行调试
+  for (let pair of form.entries()) {
+      console.log(pair[0]+ ', ' + pair[1]);
   }
 
   try {
@@ -214,13 +230,12 @@ const submitForm = async () => {
       });
       if (response.data.id) {
           alert('项目提交成功！');
-          // 假设 avue - form 有重置验证的方法，这里根据实际情况调用
           const uploadedFiles = response.data.files || [];
           formData.value.pdfUrl = formData.value.pdfUrl.concat(uploadedFiles.map(file => ({
-              // 根据实际情况调整对象结构
               name: file.name,
               url: file.url
-        })));
+          })));
+          router.push('/Success');  // 跳转到成功页面
       }
   } catch (error) {
       if (error.response) {
