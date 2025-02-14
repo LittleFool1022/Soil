@@ -58,7 +58,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
     const sanitizedFilename = decodedFilename.replace(/\s/g, '');
     const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, -3); // 精确到秒的时间戳
     const newFilename = `${timestamp}-${sanitizedFilename}`;
-    const fileUrl = `/uploads/${newFilename}`;
+    const fileUrl = `http://localhost:3000/uploads/${newFilename}`;
 
     res.json({ data: { url: fileUrl, name: newFilename } });
 });
@@ -67,7 +67,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 app.delete('/api/upload/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(uploadDir, filename);
-  const fullUrl = `/uploads/${filename}`;
+  const fullUrl = `http://localhost:3000/uploads/${filename}`;
   if (fs.existsSync(filePath)) {
       fs.unlink(filePath, (err) => {
           if (err) {
