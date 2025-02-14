@@ -1,337 +1,310 @@
 <template>
-  <div class="app-container">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
-      <div class="container">
-        <router-link class="navbar-brand" to="/">中国水土保持公示网</router-link>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav">
-            <li class="nav-item">
-                <router-link class="nav-link" to="/">返回首页</router-link>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </nav>
+  <el-form ref="form" :model="form" :rules="rules" label-width="120px" class="submit-container">
+    <!-- 项目类型 -->
+    <el-form-item label="项目类型" prop="projectType">
+      <el-select v-model="form.projectType" placeholder="请选择项目类型">
+        <el-option
+          v-for="item in projectTypes"
+          :key="item.value"
+          :label="item.label"
+          :value="item.value"
+        />
+      </el-select>
+    </el-form-item>
 
-    <div class="container">
-      <div class="form-container">
-        <h6 class="text-center mb-3">项目填报</h6>
-        <avue-form :option="formOption" v-model="formData" @change="handleFormChange"></avue-form>
-        <!-- 显示提示信息 -->
-        <div v-if="showReminder" class="reminder">
-          {{ reminderText }}
-        </div>
-          <div class="text-center">  <!-- 使用 text-center 类居中 -->
-            <button class="btn btn-success" @click="submitForm" style="width: 300px; margin-top: 20px;">确认提交</button>
+    <!-- 项目基本信息 -->
+    <el-form-item label="项目名称" prop="projectName">
+      <el-input v-model="form.projectName" placeholder="请输入项目全称" />
+    </el-form-item>
+
+    <el-form-item label="建设单位" prop="constructionUnit">
+      <el-input v-model="form.constructionUnit" placeholder="请输入建设单位全称" />
+    </el-form-item>
+
+    <el-form-item label="编制单位" prop="compilationUnit">
+      <el-input v-model="form.compilationUnit" placeholder="请输入编制单位全称" />
+    </el-form-item>
+
+    <!-- 行政区划级联选择 -->
+    <el-form-item label="项目所在地" prop="areaCode">
+      <el-cascader
+        v-if="areaOptions.length > 0"
+        v-model="form.areaCode"
+        :options="areaOptions"
+        :props="areaProps"
+        placeholder="请选择省/市/区"
+        :emitPath="true"
+        style="width: 100%"
+      />
+    </el-form-item>
+
+    <!-- 日期范围 -->
+    <el-form-item label="起止日期" prop="dateRange">
+      <el-date-picker
+        v-model="form.dateRange"
+        type="daterange"
+        value-format="yyyy-MM-dd"
+        range-separator="至"
+        start-placeholder="开始日期"
+        end-placeholder="结束日期"
+        style="width: 100%"
+      />
+    </el-form-item>
+
+    <!-- 项目描述 -->
+    <el-form-item label="项目描述" prop="description">
+      <el-input
+        v-model="form.description"
+        type="textarea"
+        :rows="10"
+        placeholder="请输入项目详细描述"
+      />
+    </el-form-item>
+
+    <!-- 文件上传 -->
+    <el-form-item label="项目附件" prop="files">
+      <el-upload
+        name="file"
+        :data="{ type: 'project' }"
+        multiple
+        :limit="5"
+        :file-list="form.files"
+        :before-upload="beforeUpload"
+        :on-remove="handleFileRemove"
+        :on-success="handleUploadSuccess"
+        :action="uploadUrl"
+        :headers="headers"
+        :auto-upload="true"
+        :with-credentials="true"
+      >
+        <el-button size="small" type="success">点击上传</el-button>
+        <template #tip>
+          <div class="el-upload__tip">
+            仅支持PDF文件，单个文件不超过20MB
           </div>
-        </div>
-    </div>
-  </div>
+        </template>
+      </el-upload>
+    </el-form-item>
+
+    <!-- 修改按钮代码 -->
+    <el-form-item>
+      <el-button 
+        type="primary" 
+        :loading="submitting"
+        @click="submitForm"
+      >
+        提交项目
+      </el-button>
+    </el-form-item>
+  </el-form>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import axios from 'axios'; // Import axios
+<script>
+import { regionData, CodeToText } from 'element-china-area-data'
+import request from '@/request' // 替换原本的$http
 
-const formData = ref({});
-const showReminder = ref(false);
-const reminderText = ref('');
+export default {
+  data() {
 
-const baseUrl = 'https://cli.avuejs.com/api/area';
-const uploadAction = 'http://localhost:3000/api/upload';
-const submitAction  = 'http://localhost:3000/api/projects';
-const deleteFileAction = 'http://localhost:3000/api/upload'; 
-
-
-const router = useRouter(); // 使用 router
-
-const form = ref({
-  province: '110000',
-  city: '110100',
-  area: '110101',
-  imgUrl: []
-});
-
-const formOption = ref({
-  labelWidth: '100px', // 让表单标签宽度一致
-  gutter: 20, // 控制列之间的间距
-  submitBtn: false,
-  column: [
-    {
-      label: '公示类型',
-      prop: 'projectType',
-      type: 'select',
-      dicData: [
-        { label: '默认公示' },
-        { label: '验收公示', value: 'B' },
-        { label: '检测公示', value: 'C' },
-        { label: '方案公示', value: 'D' },
-        { label: '其他公示', value: 'E' }
+    return {
+      submitting: false,
+      uploadUrl: (process.env.VUE_APP_API || 'http://localhost:3000') + '/api/upload',
+      headers: { Authorization: `Bearer ${localStorage.token}` },
+      
+      // 项目类型选项（示例数据，请根据实际需求调整）
+      projectTypes: [
+        { value: 'B', label: '验收公示' },
+        { value: 'C', label: '立项公示' },
+        { value: 'D', label: '审批公示' },
+        { value: 'E', label: '其他公示' }
       ],
-      placeholder: '请选择项目类型',
-      rules: [{ required: true, message: '请选择项目类型', trigger: 'change' }]
-    },
-    {
-      label: '项目名称',
-      prop: 'projectName',
-      type: 'input',
-      span: 24, // 独占一整行
-      placeholder: '请输入项目名称',
-      rules: [{ required: true, message: '项目名称不为空', trigger: 'blur' }]
-    },
-    {
-      label: '建筑单位',
-      prop: 'constructionUnit',
-      type: 'input',
-      placeholder: '请输入建筑单位',
-      rules: [{ required: true, message: '建筑单位不为空', trigger: 'blur' }]
-    },
-    {
-      label: '编制单位',
-      prop: 'compilationUnit',
-      type: 'input',
-      rules: [{ required: true, message: '编制单位不为空，验收报告和水保方案填各自编制单位', trigger: 'blur' }]
-    },
-    {
-      label: '地理位置',
-      prop: 'province',
-      type: 'select',
-      span: 10,
-      props: {
-        label: 'name',
-        value: 'code'
+      
+      // 行政区划配置
+      areaOptions: regionData,
+      areaProps: {
+        value: 'value',
+        label: 'label',
+        children: 'children',
+        emitPath: true,       // 确保返回完整路径
+        checkStrictly: false   // 允许不完整选择（调试用）
       },
-      cascader: ['city'],
-      dicUrl: `${baseUrl}/getProvince`,
-      placeholder: '请选择省市',
-      rules: [
-        {
-          required: true,
-          message: '请选择省市',
-          trigger: 'blur'
-        }
-      ]
-    },
-    {
-      prop: 'city',
-      type: 'select',
-      span: 7,
-      cascader: ['area'],
-      props: {
-        label: 'name',
-        value: 'code'
+      
+      
+      // 表单数据
+      form: {
+        projectType: '',
+        projectName: '',
+        constructionUnit: '',
+        compilationUnit: '',
+        areaCode: [], // 存储省市区代码数组 [省code, 市code, 区code]
+        dateRange: [],
+        description: '',
+        files: []
       },
-      dicUrl: `${baseUrl}/getCity/{{key}}`,
-      placeholder: '请选择城市',
-      rules: [
-        {
-          required: true,
-          message: '请选择城市',
-          trigger: 'blur'
-        }
-      ]
-    },
-    {
-      prop: 'area',
-      type: 'select',
-      span: 7,
-      props: {
-        label: 'name',
-        value: 'code'
-      },
-      dicUrl: `${baseUrl}/getArea/{{key}}`,
-      placeholder: '请选择地区',
-      rules: [
-        {
-          required: true,
-          message: '请选择地区',
-          trigger: 'blur'
-        }
-      ]
-    },
-    {
-      label: "起止日期",
-      prop: "daterange",
-      type: "daterange",
-      format: 'YYYY-MM-DD',
-      span: 24,
-      valueFormat: 'YYYY-MM-DD',
-      startPlaceholder: '开始日期',
-      endPlaceholder: '结束日期',
-      rules: [{ required: true, message: '起止日期不为空', trigger: 'blur' }]
-    },
-    {
-      label: '项目说明',
-      prop: 'description',
-      type: 'textarea',
-      span: 24, // 独占一整行
-      placeholder: '请输入项目描述',
-      rules: [{ required: true, message: '项目描述不为空', trigger: 'blur' }]
-    },
-    {
-      label: '附件上传',
-      prop: 'pdfUrl',
-      type: 'upload',
-      multiple: true,
-      fileSize: 20000,
-      span: 24,
-      propsHttp: {
-        name: 'name',    // 与后端 multer.single('file') 中的字段名对应
-        url: 'url',      // 返回数据中 url 字段值
-        res: 'data'      // 上传接口返回的数据在 data 中
-      },
-      action: uploadAction,
-      rules: [{ required: true, message: '附件不为空', trigger: 'blur' }]
-    }
-  ]
-});
-
-// 提交表单方法
-const submitForm = async () => {
-  // 使用 FormData 用于 multipart/form-data 格式提交数据和文件
-  const form = new FormData();
-
-  // 处理常规字段
-  // 将表单中除附件上传外的字段加入 FormData
-  for (const key in formData.value) {
-    if (key !== 'pdfUrl' && key !== 'daterange') {
-      form.append(key, formData.value[key]);
-    }
-  }
-  // 处理日期范围
-  if (formData.value.daterange && formData.value.daterange.length === 2) {
-      const [startDate, endDate] = formData.value.daterange;
-      form.append('startDate', startDate);
-      form.append('endDate', endDate);
-  } else {
-      console.log('日期范围数据无效');
-      return;
-  }
-  // 处理附件上传
-  if (formData.value.pdfUrl && formData.value.pdfUrl.length > 0) {
-    // 确保 pdfUrl 是数组格式，如果是字符串，转为数组
-    const pdfUrls = Array.isArray(formData.value.pdfUrl) ? formData.value.pdfUrl : [formData.value.pdfUrl];
-    // 转换为 JSON 字符串
-    form.append('pdfUrl', JSON.stringify(pdfUrls));
-  }
-
-  // 打印 FormData 内容进行调试
-  for (let pair of form.entries()) {
-      console.log(pair[0]+ ', ' + pair[1]);
-  }
-
-  try {
-      const response = await axios.post(submitAction, form, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      if (response.data.id) {
-          alert('项目提交成功！');
-          const uploadedFiles = response.data.files || [];
-          formData.value.pdfUrl = formData.value.pdfUrl.concat(uploadedFiles.map(file => ({
-              name: file.name,
-              url: file.url
-          })));
-          router.push('/Success');  // 跳转到成功页面
-      }
-  } catch (error) {
-      if (error.response) {
-          const status = error.response.status;
-          if (status === 400) {
-              alert('请求参数错误，请检查输入！');
-          } else if (status === 500) {
-              alert('服务器内部错误，请稍后再试！');
-          } else {
-              alert('提交失败，状态码：' + status);
+      
+      // 验证规则
+      rules: {
+        projectType: [
+          { required: true, message: '请选择项目类型', trigger: 'change' }
+        ],
+        projectName: [
+          { required: true, message: '请输入项目名称', trigger: 'blur' },
+          { max: 255, message: '长度不超过255字符', trigger: 'blur' }
+        ],
+        constructionUnit: [
+          { required: true, message: '请输入建设单位', trigger: 'blur' }
+        ],
+        compilationUnit: [
+          { required: true, message: '请输入编制单位', trigger: 'blur' }
+        ],
+        areaCode: [
+          { 
+            type: 'array', 
+            required: true,
+            validator: (rule, value, callback) => {
+              if (!value || value.length !== 3) {
+                callback(new Error('请选择完整的省/市/区'))
+              } else if (value.some(item => !item)) {
+                callback(new Error('存在无效的行政区划选择'))
+              } else {
+                callback()
+              }
+            },
+            trigger: 'change' 
           }
-      } else {
-          console.error('提交失败:', error);
-          alert('项目提交失败，请检查网络连接！');
+        ],
+        dateRange: [
+          { 
+            type: 'array', 
+            required: true, 
+            validator: (rule, value, cb) => {
+              if (!value || value.length !== 2) return cb(new Error('请选择日期范围'))
+              if (new Date(value[0]) > new Date(value[1])) {
+                return cb(new Error('结束日期不能早于开始日期'))
+              }
+              cb()
+            }
+          }
+        ],
+        description: [
+          { required: true, message: '请输入项目描述', trigger: 'blur' }
+        ]
       }
-  }
-};
+    }
+  },
+  methods: {
+    //完善文件上传处理
+    handleUploadSuccess(res, file) {
+      this.form.files.push({
+        name: res.data.name,
+        url: res.data.url
+      })
+    },
 
-// 处理表单变化事件
-const handleFormChange = (value, form) => {
-  switch (value.projectType) {
-    case 'B':
-      reminderText.value = '注：如验收鉴定书、验收报告、监测总结、监理总结等';
-      showReminder.value = true;
-      break;
-    case 'C':
-      reminderText.value = '注：如监测季报、年报、实施方案、三色评价等';
-      showReminder.value = true;
-      break;
-    case 'D':
-      reminderText.value = '注：水土保持方案报告表、报告书、使用方案等';
-      showReminder.value = true;
-      break;
-    case 'E':
-      reminderText.value = '注：非水保报告使用其他公示，如环评，排水等';
-      showReminder.value = true;
-      break;
-    default:
-      showReminder.value = false;
-      reminderText.value = '';
-  }
-};
+    // 在data的upload配置中增加：
+    beforeUpload(file) {
+      const isPDF = file.type === 'application/pdf'
+      const isLt10M = file.size / 1024 / 1024 < 20
 
-// 点击其他区域取消提示
-const handleOutsideClick = (event) => {
-  const formElement = document.querySelector('.form-container');
-  if (formElement &&!formElement.contains(event.target)) {
-    showReminder.value = false;
-    reminderText.value = '';
-  }
-};
+      if (!isPDF) {
+        this.$message.error('只能上传PDF文件')
+        return false
+      }
+      if (!isLt10M) {
+        this.$message.error('文件大小不能超过20MB')
+        return false
+      }
+      return true
+    },
 
-onMounted(() => {
-  window.addEventListener('click', handleOutsideClick);
-});
+    async submitForm() {
+      try {
+        await this.$refs.form.validate()
+        this.submitting = true
+
+        // 处理行政区划数据
+        const [province, city, area] = this.form.areaCode
+
+        // 构建符合后端要求的提交数据
+        const submitData = {
+          projectType: this.form.projectType,
+          projectName: this.form.projectName,
+          constructionUnit: this.form.constructionUnit,
+          compilationUnit: this.form.compilationUnit,
+          province,
+          city,
+          area,
+          startDate: this.form.dateRange[0],
+          endDate: this.form.dateRange[1],
+          description: this.form.description,
+          pdfUrls: JSON.stringify(this.form.files.map(f => ({
+            name: f.name,
+            url: f.url
+          })))
+        }
+
+        const { data } = await request.post('/api/projects', submitData)
+        this.$message.success('提交成功')
+        this.$router.push(`/detail/${data.id}`)
+      } catch (error) {
+        // 增强错误处理
+        let message = '提交失败'
+        if (error.response) {
+          message = error.response.data.error || message
+        } else if (error.request) {
+          message = '网络连接异常，请检查网络后重试'
+        }
+        this.$message.error(message)
+      } finally {
+        this.submitting = false
+      }
+    },
+    handleFileRemove(file) {
+      this.$http.delete(`/api/files?url=${encodeURIComponent(file.url)}`)
+    }
+  }
+}
 </script>
 
 <style scoped>
-
-/* 可以根据实际情况调整样式 */
-.avue-form .avue-upload-list {
-    display: block;
-}
-
-.app-container {
-  position: relative;
-  min-height: 100vh;
-}
-
-.app-container::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 400px; /* 限制背景高度为上栏 */
-  background: url('/public/assets/background.webp') no-repeat center center;
-  background-size: cover;
-  opacity: 0.4; /* 降低透明度 60% (1 - 0.4 = 0.6) */
-  z-index: -1; /* 置于最底层 */
-}
-
-
-.form-container {
+.submit-container {
   max-width: 800px;
-  margin: 300px auto;
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: #fff;
+  margin: 200px auto;
 }
 
-.reminder {
-  color: red;
-  margin-top: 5px;
-  /* 确保提示信息清晰可见 */
-  font-size: 14px;
+/* 使用深度选择器覆盖element样式 */
+.submit-container >>> .el-form-item:last-child .el-form-item__content {
+  display: flex;
+  justify-content: center;
+  margin-left: 0 !important; /* 清除element默认的左侧margin */
+}
+
+.submit-container >>> .el-form-item:last-child button {
+  width: 200px;
+  height: 40px;
+  font-size: 16px;
+  letter-spacing: 2px; /* 可选：增加文字间距 */
+  transition: all 0.3s; /* 可选：添加过渡效果 */
+}
+
+/* 鼠标悬停效果 */
+.submit-container >>> .el-form-item:last-child button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 12px 0 rgba(64, 158, 255, 0.3);
+}
+
+/* 确保级联选择器文本可见 */
+.el-cascader__label {
+  color: #606266 !important;
+}
+
+/* 优化移动端显示 */
+@media (max-width: 768px) {
+  .submit-container {
+    padding: 0 15px;
+  }
+  .el-form-item__label {
+    white-space: normal;
+  }
 }
 </style>
