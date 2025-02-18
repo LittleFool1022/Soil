@@ -320,6 +320,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: '服务器内部错误' });
 });
 
-app.listen(port, () => {
+app.listen(port,'0.0.0.0', () => {
   console.log(`Server running on port ${port}`);
 });
