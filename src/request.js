@@ -6,7 +6,7 @@ const service = axios.create({
   baseURL: process.env.NODE_ENV === 'development' 
       //? 'http://localhost:3000' 
       ? 'https://zgstbc.com'
-      : process.env.VUE_APP_API_BASE_URL || 'http://localhost:3000',
+      : process.env.VUE_APP_API_BASE_URL || 'https://zgstbc.com',
   
   // 超时时间
   timeout: 15000,
