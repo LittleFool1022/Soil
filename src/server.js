@@ -27,7 +27,7 @@ const corsOptions = {
       const allowedOrigins = process.env.NODE_ENV === 'production' 
         ? ['http://zgstbc.com']
         : ['http://localhost:8080', 'http://localhost:8081', 'https://zgstbc.com'];
-  
+        //: ['http://localhost:8080', 'http://localhost:8081', 'http://localhost:3000'];
       if (!origin) return callback(null, true); // 允许无origin请求
       
       if (allowedOrigins.includes(origin)) {
@@ -312,7 +312,7 @@ app.get('/api/projects/:id', async (req, res) => {
 });
 
 // 修改为普通静态资源服务
-app.use('/uploads', express.static(uploadDir));
+//app.use('/uploads', express.static(uploadDir));
 
 // 统一错误处理
 app.use((err, req, res, next) => {
