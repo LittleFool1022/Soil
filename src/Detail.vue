@@ -1,39 +1,52 @@
 <template>
   <div class="app-container">
+    <!-- 导航栏 -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-success">
-      <!-- 导航栏同Home.vue -->
-    </nav>
-
-    <div class="container detail-container">
-      <div v-if="project">
-        <h2>{{ project.project_name }}</h2>
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="项目类型">{{ project.project_type }}</el-descriptions-item>
-          <el-descriptions-item label="建筑单位">{{ project.construction_unit }}</el-descriptions-item>
-          <el-descriptions-item label="编制单位">{{ project.compilation_unit }}</el-descriptions-item>
-          <el-descriptions-item label="所在地区">
-            {{ project.province }}/{{ project.city }}/{{ project.area }}
-          </el-descriptions-item>
-          <el-descriptions-item label="起止时间">
-            {{ formatDate(project.start_time) }} 至 {{ formatDate(project.end_time) }}
-          </el-descriptions-item>
-        </el-descriptions>
-
-        <div class="description-section">
-          <h4>项目说明</h4>
-          <p>{{ project.description }}</p>
-        </div>
-
-        <div class="pdf-section">
-          <h4>相关附件</h4>
-          <div v-for="(pdf, index) in parsedPdfUrls" :key="index">
-            <a :href="pdf" target="_blank" class="pdf-link">
-              <i class="el-icon-document"></i>
-              附件{{ index + 1 }}
-            </a>
-          </div>
+      <div class="container">
+        <router-link class="navbar-brand" to="/">中国水土保持公示网</router-link>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <router-link class="nav-link" to="/">返回首页</router-link>
+            </li>
+          </ul>
         </div>
       </div>
+    </nav>
+
+    <div class="form-container">
+      <el-form :model="project" label-width="120px" style="border: none;">
+        <el-form-item label="项目名称:">
+          <span>{{ project.project_name }}</span>
+        </el-form-item>
+        <el-form-item label="公示类型:">
+          <span>{{ getProjectTypeLabel(project.project_type) }}</span>
+        </el-form-item>
+        <el-form-item label="公示时间:">
+          <span>{{ formatDate(project.create_time) }}</span>
+        </el-form-item>
+        <el-form-item label="建设单位:">
+          <span>{{ project.construction_unit }}</span>
+        </el-form-item>
+        <el-form-item label="编制单位:">
+          <span>{{ project.compilation_unit }}</span>
+        </el-form-item>
+        <el-form-item label="项目位置:">
+          <span>{{ getLocationName(project.province, project.city, project.area) }}</span>
+        </el-form-item>
+        <el-form-item label="项目描述:">
+          <span>{{ project.description }}</span>
+        </el-form-item>
+        <el-form-item label="项目附件:">
+          <template v-for="(file, index) in project.pdfUrls" :key="index">
+            <el-link :href="file.url" download @click.prevent="downloadFile(file.url)">{{ file.name }}</el-link>
+            <br />
+          </template>
+        </el-form-item>
+      </el-form>
     </div>
   </div>
 </template>
@@ -41,60 +54,81 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import axios from 'axios';
+import { getProjectById  } from './request'; // 假设存在一个根据 ID 获取项目详情的接口
+import { codeToText } from 'element-china-area-data';
 
 const route = useRoute();
-const project = ref(null);
-const parsedPdfUrls = ref([]);
+const project = ref({});
 
-onMounted(async () => {
-  try {
-    const res = await axios.get(`/api/projects/${route.params.id}`);
-    project.value = res.data;
-    parsedPdfUrls.value = JSON.parse(project.value.pdf_urls);
-  } catch (error) {
-    console.error('获取详情失败:', error);
-  }
-});
+const getProjectTypeLabel = (type) => {
+  const types = {
+    '': '默认公示',
+    'B': '验收公示',
+    'C': '检测公示',
+    'D': '方案公示',
+    'E': '其他公示'
+  };
+  return types[type] || '未知类型';
+};
 
 const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString();
 };
+
+const getLocationName = (provinceCode, cityCode, areaCode) => {
+  const provinceName = codeToText[provinceCode] || '';
+  const cityName = codeToText[cityCode] || '';
+  const areaName = codeToText[areaCode] || '';
+  return `${provinceName}-${cityName}-${areaName}`;
+};
+
+const downloadFile = (url) => {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = url.split('/').pop();
+  link.click();
+};
+
+onMounted(async () => {
+  const projectId = route.params.id;
+  try {
+    //console.log('开始请求项目详情，项目 ID:', projectId);
+    const res = await getProjectById(projectId); 
+    //console.log('获取到的项目详情:', res);
+    project.value = res;
+    //console.log('项目数据赋值完成，当前项目数据:', project.value);
+  } catch (error) {
+    console.error('捕获到的错误:', error);
+    console.error('获取项目详情失败:', error);
+  }
+});
 </script>
 
 <style scoped>
-.detail-container {
+.app-container {
+  position: relative;
+  min-height: 100vh;
+}
+
+.form-container {
   max-width: 1200px;
-  margin: 100px auto;
-  padding: 30px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-}
-
-.description-section {
-  margin: 30px 0;
+  margin: 200px auto;
   padding: 20px;
-  background: #f8f9fa;
-  border-radius: 6px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #fff;
 }
 
-.pdf-section {
-  margin-top: 30px;
-}
-
-.pdf-link {
-  display: inline-block;
-  margin: 10px 15px 10px 0;
-  padding: 8px 15px;
-  background: #f5f7fa;
-  border-radius: 4px;
-  color: #606266;
-  transition: all 0.3s;
-}
-
-.pdf-link:hover {
-  background: #409eff;
-  color: white;
+.app-container::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 400px;
+  background: url("/public/assets/background.webp") no-repeat center center;
+  background-size: cover;
+  opacity: 0.4;
+  z-index: -1;
 }
 </style>
