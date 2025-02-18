@@ -4,7 +4,8 @@ import axios from 'axios'
 const service = axios.create({
   // 基础地址（根据环境变量自动切换）
   baseURL: process.env.NODE_ENV === 'development' 
-      ? 'http://localhost:3000' 
+      //? 'http://localhost:3000' 
+      ? 'https://zgstbc.com'
       : process.env.VUE_APP_API_BASE_URL || 'http://localhost:3000',
   
   // 超时时间
