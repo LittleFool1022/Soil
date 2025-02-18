@@ -8,7 +8,7 @@ const service = axios.create({
       ? 'https://zgstbc.com'
       : process.env.VUE_APP_API_BASE_URL || 'https://zgstbc.com',
       //: process.env.VUE_APP_API_BASE_URL || 'http://localhost:3000',
-  
+      //baseURL: process.env.VUE_APP_API_BASE_URL || 'https://zgstbc.com',
   // 超时时间
   timeout: 15000,
   retry: 2, // 重试次数
