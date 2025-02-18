@@ -40,9 +40,9 @@
         <el-form-item label="项目描述:">
           <span>{{ project.description }}</span>
         </el-form-item>
-        <el-form-item label="项目附件:">
+        <el-form-item label="附件下载:">
           <template v-for="(file, index) in project.pdfUrls" :key="index">
-            <el-link :href="file.url" download @click.prevent="downloadFile(file.url)">{{ file.name }}</el-link>
+            <el-link :href="file.url" download @click.prevent="downloadFile(file.url)" style="margin-right: 20px;">{{ file.name }}</el-link>
             <br />
           </template>
         </el-form-item>

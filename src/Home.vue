@@ -1,102 +1,149 @@
 <template>
   <div class="app-container">
+    <!-- 导航栏 -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-success">
       <div class="container">
         <router-link class="navbar-brand" to="/">中国水土保持公示网</router-link>
-        <button
-          class="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-        >
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav">
             <li class="nav-item">
-              <router-link class="nav-link" to="/">首页</router-link>
+                <router-link class="nav-link" to="/">首页</router-link>
             </li>
-            
           </ul>
         </div>
       </div>
     </nav>
-    <div class="container">
-      <div class="form-container">
-        <div class="text-center">
-          <button class="btn btn-success" @click="goToSubmit" style="width: 300px; margin-top: 20px; margin-bottom: 20px;">我要公示</button>
-        </div>
-        <!-- 搜索表单 -->
-        <avue-crud
-          :option="option"
-          :data="data"
-          :form="formData"
-          @search="onSearch"
-          @reset="onReset"
-        >
-          <!-- 自定义搜索按钮 -->
-          <template #toolbar>
+
+    <div class="form-container">
+      <div class="text-center">
+        <el-button type="success" @click="goToSubmit" style="width: 300px; margin-top: 10px; margin-bottom: 10px;">我要公示</el-button>
+      </div>
+      <hr class="divider-line">
+      <!-- 搜索表单 -->
+      <el-form :model="formData" ref="searchFormRef" label-width="100px">
+        <el-row>
+          <el-col :span="12">
+            <el-form-item label="项目名称">
+              <el-input v-model="formData.projectName" placeholder="请输入项目名称"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="公示类型">
+              <el-select v-model="formData.projectType" placeholder="请选择公示类型">
+                <el-option label="默认公示" value=""></el-option>
+                <el-option label="验收公示" value="B"></el-option>
+                <el-option label="检测公示" value="C"></el-option>
+                <el-option label="方案公示" value="D"></el-option>
+                <el-option label="其他公示" value="E"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="公示时间">
+              <el-date-picker
+                v-model="formData.daterange"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                @change="handleDateRangeChange"
+              ></el-date-picker>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="项目位置">
+              <el-cascader
+                v-model="formData.areaCode"
+                :options="areaOptions"
+                :props="areaProps"
+                placeholder="请选择省/市/区"
+                :emitPath="true"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="24" style="text-align: center;">
             <el-button type="success" @click="onSearch">立即搜索</el-button>
             <el-button @click="onReset">重置</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
+      <!-- 搜索结果 -->
+      <el-table :data="searchResults" style="width: 100%" @row-click="viewDetail">
+        <el-table-column prop="project_name" label="项目名称">
+          <template #default="scope">
+            <span class="project-name-hoverable">{{ scope.row.project_name }}</span>
           </template>
-        </avue-crud>
-        <div class="search-results">
-          <div v-for="item in searchResults" :key="item.id" 
-              class="result-item" @click="viewDetail(item.id)">
-            <h5>{{ item.project_name }}</h5>
-            <p>{{ item.province }}-{{ item.city }}-{{ item.area }}</p>
-            <p>开始时间：{{ formatDate(item.start_time) }}</p>
-          </div>
-        </div>
-      </div>
+        </el-table-column>
+        <el-table-column label="项目位置">
+          <template #default="scope">
+            {{ getLocationName(scope.row.province, scope.row.city, scope.row.area) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="公示时间">
+          <template #default="scope">
+            {{ formatDate(scope.row.create_time) }}
+          </template>
+        </el-table-column>
+      </el-table>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref , onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter } from 'vue-router';
-import axios from 'axios';
-const baseUrl = 'https://cli.avuejs.com/api/area';
+import { getProjects } from './request';
+import { regionData, codeToText } from 'element-china-area-data';
 
 const router = useRouter();
+
 const searchResults = ref([]);
-
-const form = ref({
-  province: '110000',
-  city: '110100',
-  area: '110101',
-  imgUrl: []
-});
-
-// 模拟数据
-const data = ref([
-]);
-
-// 搜索表单数据绑定
 const formData = ref({
   projectType: "",
   projectName: "",
-  startDate: "",
-  endDate: "",
-  province: "",
-  city: "",
-  area: "",
+  constructionUnit: "",
+  compilationUnit: "",
+  daterange: [],
+  areaCode: []
 });
+const areaOptions = ref(regionData);
+const areaProps = ref({
+  value: 'value',
+  label: 'label',
+  children: 'children',
+  emitPath: true,
+  checkStrictly: false
+});
+
+const searchFormRef = ref(null);
 
 const onSearch = async () => {
   try {
-    const res = await axios.get('/api/projects', {
-      params: formData.value
-    });
-    searchResults.value = res.data;
+    const [province, city, area] = formData.value.areaCode;
+    const params = {
+      projectType: formData.value.projectType,
+      projectName: formData.value.projectName,
+      startDate: formData.value.daterange[0]? new Date(formData.value.daterange[0]).toISOString().split('T')[0] : '',
+      endDate: formData.value.daterange[1]? new Date(formData.value.daterange[1]).toISOString().split('T')[0] : '',
+      province: province? province.toString() : '',
+      city: city? city.toString() : '',
+      area: area? area.toString() : ''
+    };
+    const res = await getProjects(params);
+    searchResults.value = res;
   } catch (error) {
     console.error('搜索失败:', error);
   }
 };
 
-const viewDetail = (id) => {
-  router.push(`/detail/${id}`);
+const viewDetail = (row) => {
+    router.push(`/detail/${row.id}`);
 };
 
 const formatDate = (dateStr) => {
@@ -107,140 +154,48 @@ const goToSubmit = () => {
   router.push('/submit');  // 跳转到 Submit.vue 页面
 };
 
-// Avue 配置
-const option = ref({
-  addBtn: false, // 关闭新增按钮
-  refreshBtn: false,//关闭刷新按钮
-  columnBtn: false,//关闭列显隐按钮
-  editBtn: false,//关闭行内编辑按钮
-  delBtn: false,//关闭行能删除按钮
-  stripe: false,//是否显示表格的斑马条纹
-  menu: false, // 关闭操作列
-
-  column: [
-    {
-      label: "项目名称",
-      prop: "projectName",
-      search: true,
-      searchSpan: 24,
-      searchRange: true,
-      placeholder: "请输入项目名称",
-    },
-    {
-      label: "公示类型",
-      prop: "projectType",
-      type: "select",
-      search: true,
-      searchSpan: 8,
-      hide: true, // 仅隐藏在表格中，表单仍然可见
-      dicData: [
-        { label: '默认公示' },
-        { label: '验收公示', value: 'B' },
-        { label: '检测公示', value: 'C' },
-        { label: '方案公示', value: 'D' },
-        { label: '其他公示', value: 'E' }
-      ]
-    },
-    {
-      label: "公示时间",
-      prop: "daterange",
-      type: "daterange",
-      search: true,
-      searchSpan: 16,
-      searchRange: true,
-      value: ["startDate", "endDate"],
-    },
-    {
-      label: '项目位置',
-      prop: 'province',
-      type: 'select',
-      search: true,
-      searchSpan: 8,
-      hide: true, // 仅隐藏在表格中，表单仍然可见
-      props: {
-        label: 'name',
-        value: 'code'
-      },
-      cascader: ['city'],
-      dicUrl: `${baseUrl}/getProvince`,
-      placeholder: '请选择省市',
-      rules: [
-        {
-          required: true,
-          message: '请选择省市',
-          trigger: 'blur'
-        }
-      ]
-    },
-    {
-      prop: 'city',
-      type: 'select',
-      search: true,
-      searchSpan: 8,
-      hide: true, // 仅隐藏在表格中，表单仍然可见
-      cascader: ['area'],
-      props: {
-        label: 'name',
-        value: 'code'
-      },
-      dicUrl: `${baseUrl}/getCity/{{key}}`,
-      placeholder: '请选择城市',
-      rules: [
-        {
-          required: true,
-          message: '请选择城市',
-          trigger: 'blur'
-        }
-      ]
-    },
-    {
-      prop: 'area',
-      type: 'select',
-      search: true,
-      searchSpan: 8,
-      hide: true, // 仅隐藏在表格中，表单仍然可见
-      props: {
-        label: 'name',
-        value: 'code'
-      },
-      dicUrl: `${baseUrl}/getArea/{{key}}`,
-      placeholder: '请选择地区',
-      rules: [
-        {
-          required: true,
-          message: '请选择地区',
-          trigger: 'blur'
-        }
-      ]
-    }
-  ]
-});
-
-
-// 重置事件
-const onReset = () => {
+const onReset = async () => {
+  // 清空搜索表单数据
   formData.value = {
     projectType: "",
     projectName: "",
-    startDate: "",
-    endDate: "",
-    province: "",
-    city: "",
-    area: "",
+    daterange: [],
+    areaCode: []
   };
-//  console.log("重置表单：", formData.value);
+  try {
+    // 调用 getProjects 函数获取所有项目数据
+    const res = await getProjects();
+    searchResults.value = res;
+  } catch (error) {
+    console.error('重置后获取项目数据失败:', error);
+  }
 };
 
-// 页面加载时获取所有项目数据
+const handleDateRangeChange = (value) => {
+  if (value && value.length === 2) {
+    formData.value.startDate = new Date(value[0]).toISOString().split('T')[0];
+    formData.value.endDate = new Date(value[1]).toISOString().split('T')[0];
+  } else {
+    formData.value.startDate = "";
+    formData.value.endDate = "";
+  }
+};
+
+const getLocationName = (provinceCode, cityCode, areaCode) => {
+  const provinceName = codeToText[provinceCode] || '';
+  const cityName = codeToText[cityCode] || '';
+  const areaName = codeToText[areaCode] || '';
+  return `${provinceName}-${cityName}-${areaName}`;
+};
+
 onMounted(async () => {
   try {
-    const res = await axios.get('/api/projects');
-    searchResults.value = res.data;
+    const res = await getProjects();
+    searchResults.value = res;
   } catch (error) {
     console.error('获取项目数据失败:', error);
   }
 });
-
 </script>
 
 <style scoped>
@@ -267,7 +222,7 @@ onMounted(async () => {
 
 .form-container {
   max-width: 1200px;
-  margin: 300px auto;
+  margin: 200px auto;
   padding: 20px;
   border: 1px solid #ddd;
   border-radius: 8px;
@@ -285,5 +240,14 @@ onMounted(async () => {
   background-size: cover;
   opacity: 0.4; /* 降低透明度 60% (1 - 0.4 = 0.6) */
   z-index: -1; /* 置于最底层 */
+}
+
+/* 新增样式 */
+.project-name-hoverable {
+  cursor: pointer;
+}
+
+.project-name-hoverable:hover {
+  color: #409eff; /* 鼠标悬停时的字体颜色，可根据需要修改 */
 }
 </style>

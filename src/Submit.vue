@@ -20,7 +20,7 @@
       <el-form ref="form" :model="form" :rules="rules" label-width="120px" class="submit-container">
         <!-- 项目类型 -->
         <el-form-item label="项目类型" prop="projectType">
-          <el-select v-model="form.projectType" placeholder="请选择项目类型">
+          <el-select v-model="form.projectType" placeholder="请选择项目类型" @change="handleProjectTypeChange">
             <el-option
               v-for="item in projectTypes"
               :key="item.value"
@@ -217,6 +217,31 @@ export default {
     }
   },
   methods: {
+
+    handleProjectTypeChange(value) {
+      if (value === 'B') {
+        this.$message({
+          message: '验收相关报告如验收鉴定书、验收报告、监测总结、监理总结等',
+          type: 'info'
+        });
+      } else if (value === 'C') {
+        this.$message({
+          message: '监测相关报告如监测季报、年报、实施方案、三色评价等',
+          type: 'info'
+        });
+      } else if (value === 'D') {
+        this.$message({
+          message: '水土保持方案报告表、水土保持方案报告书使用方案公示等',
+          type: 'info'
+        });
+      } else if (value === 'E') {
+        this.$message({
+          message: '非水保报告使用其他公示，如环评，排水等',
+          type: 'info'
+        });
+      }
+    },
+
     // 完善文件上传处理
     handleUploadError(error) {
       let message = '文件上传失败';
