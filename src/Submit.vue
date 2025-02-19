@@ -128,8 +128,7 @@ export default {
   data() {
     return {
       submitting: false,
-      //uploadUrl: (process.env.VUE_APP_API || 'http://localhost:3000') + '/api/uploads',
-      uploadUrl: (process.env.VUE_APP_API || 'https://zgstbc.com') + '/api/uploads',
+      uploadUrl: 'https://zgstbc.com/api/uploads',
       headers: { Authorization: `Bearer ${localStorage.token}` },
       
       // 项目类型选项（示例数据，请根据实际需求调整）
