@@ -191,6 +191,7 @@ const getLocationName = (provinceCode, cityCode, areaCode) => {
 onMounted(async () => {
   try {
     const res = await getProjects();
+    //console.log('Home 页面搜索返回的项目数据:', res);
     searchResults.value = res;
   } catch (error) {
     console.error('获取项目数据失败:', error);

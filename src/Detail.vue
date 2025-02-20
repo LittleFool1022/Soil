@@ -83,6 +83,7 @@ const getLocationName = (provinceCode, cityCode, areaCode) => {
 };
 
 const downloadFile = (url) => {
+  console.log('要下载的文件链接:', url);
   const link = document.createElement('a');
   link.href = url;
   link.download = url.split('/').pop();
