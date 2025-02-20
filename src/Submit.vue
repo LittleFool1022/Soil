@@ -128,7 +128,7 @@ export default {
   data() {
     return {
       submitting: false,
-      uploadUrl: 'http://www.zgstbc.com/api/uploads',
+      uploadUrl: 'https://www.zgstbc.com/api/uploads',
       headers: { Authorization: `Bearer ${localStorage.token}` },
       
       // 项目类型选项（示例数据，请根据实际需求调整）

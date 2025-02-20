@@ -4,8 +4,8 @@ import axios from 'axios'
 const service = axios.create({
   // 基础地址（根据环境变量自动切换）
   baseURL: process.env.NODE_ENV === 'development' 
-      ? 'http://www.zgstbc.com' 
-      : 'http://www.zgstbc.com',
+      ? 'https://www.zgstbc.com' 
+      : 'https://www.zgstbc.com',
   // 超时时间
   timeout: 15000,
   retry: 2, // 重试次数
