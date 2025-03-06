@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
     <nav class="navbar navbar-expand-lg navbar-dark bg-success">
-      <div class="container">
+      <div class="container-fluid"> <!-- 使用 container-fluid 适配移动端 -->
         <router-link class="navbar-brand" to="/">中国水土保持公示网</router-link>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
           <span class="navbar-toggler-icon"></span>
@@ -9,12 +9,35 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav">
             <li class="nav-item">
-                <router-link class="nav-link" to="/">返回首页</router-link>
+              <router-link class="nav-link" to="/">返回首页</router-link>
             </li>
           </ul>
         </div>
       </div>
     </nav>
+
+    <!-- 新增登录状态悬浮容器 -->
+    <div class="login-status-container">
+      <ul class="navbar-nav d-flex align-items-center">
+        <li class="nav-item me-3">
+          <el-dropdown v-if="isLoggedIn" trigger="hover">
+            <span class="el-dropdown-link d-flex justify-content-center align-items-center">
+              {{ user?.username || '' }}
+               <el-icon><User /></el-icon> <!-- 添加用户图标 -->
+            </span>
+            <template #dropdown>
+              <el-dropdown-menu class="login-dropdown-menu">
+                <el-dropdown-item @click="logout">退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          <a v-else class="login-status-link d-flex justify-content-center align-items-center" @click="handleLoginClick">
+            未登录 
+            <el-icon><User /></el-icon> <!-- 未登录也添加图标 -->
+          </a>
+        </li>
+      </ul>
+    </div>
 
     <div class="form-container">
       <el-form ref="form" :model="form" :rules="rules" label-width="120px" class="submit-container">
@@ -66,6 +89,8 @@
             end-placeholder="结束日期"
             clearable
             style="width: 100%"
+            :disabled-date="disabledDate"
+            @change="handleDateChange"
           />
         </el-form-item>
 
@@ -122,46 +147,38 @@
 
 <script>
 import { regionData, CodeToText } from 'element-china-area-data'
-import { submitProject, deleteFile } from './request' // 导入封装好的接口
+import { submitProject, deleteFile } from '../request' // 导入封装好的接口
 
 export default {
   data() {
     return {
       submitting: false,
-      uploadUrl: 'https://www.zgstbc.com/api/uploads',
-      headers: { Authorization: `Bearer ${localStorage.token}` },
-      
-      // 项目类型选项（示例数据，请根据实际需求调整）
+      uploadUrl: 'http://localhost:3000/api/uploads',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
       projectTypes: [
         { value: 'B', label: '验收公示' },
         { value: 'C', label: '立项公示' },
         { value: 'D', label: '审批公示' },
         { value: 'E', label: '其他公示' }
       ],
-      
-      // 行政区划配置
       areaOptions: regionData,
       areaProps: {
         value: 'value',
         label: 'label',
         children: 'children',
-        emitPath: true,       // 确保返回完整路径
-        checkStrictly: false   // 允许不完整选择（调试用）
+        emitPath: true,
+        checkStrictly: false
       },
-      
-      // 表单数据
       form: {
         projectType: '',
         projectName: '',
         constructionUnit: '',
         compilationUnit: '',
-        areaCode: [], // 存储省市区代码数组 [省code, 市code, 区code]
+        areaCode: [],
         dateRange: [],
         description: '',
         files: []
       },
-      
-      // 验证规则
       rules: {
         projectType: [
           { required: true, message: '请选择项目类型', trigger: 'change' }
@@ -213,11 +230,19 @@ export default {
         description: [
           { required: true, message: '请输入项目描述', trigger: 'blur' }
         ]
-      }
+      },
+      isLoggedIn: false,
+      user: null
     }
   },
+  mounted() {
+    this.updateLoginStatus();
+    window.addEventListener('storage', this.handleStorageChange);
+  },
+  beforeUnmount() {
+    window.removeEventListener('storage', this.handleStorageChange);
+  },
   methods: {
-
     handleProjectTypeChange(value) {
       if (value === 'B') {
         this.$message({
@@ -241,8 +266,6 @@ export default {
         });
       }
     },
-
-    // 完善文件上传处理
     handleUploadError(error) {
       let message = '文件上传失败';
       if (error.message.includes('Network Error')) {
@@ -252,17 +275,14 @@ export default {
       }
       this.$message.error(message);
     },
-
     handleUploadSuccess(response, file, fileList) {
       const index = fileList.findIndex(f => f.uid === file.uid);
       if (index!== -1) {
         fileList[index].url = response.data.url;
-        this.form.files = [...fileList]; // 确保 Vue 能检测到数组的变化
+        this.form.files = [...fileList];
       }
       this.$message.success('文件上传成功');
     },
-
-    // 在data的upload配置中增加：
     beforeUpload(file) {
       const isPDF = file.type === 'application/pdf'
       const isLt20M = file.size / 1024 / 1024 < 20
@@ -277,7 +297,6 @@ export default {
       }
       return true
     },
-
     handleFileRemove(file) {
       if (!file.url) {
         this.$message.error('文件 URL 无效，无法删除');
@@ -286,7 +305,6 @@ export default {
       deleteFile(file.url)
         .then(() => {
           this.$message.success('文件删除成功');
-          // 从文件列表中移除已删除的文件
           if (Array.isArray(this.form.files)) {
             this.form.files = this.form.files.filter(f => f.url!== file.url);
           } else {
@@ -298,31 +316,37 @@ export default {
           this.$message.error('文件删除失败：' + (error || '未知错误'));
         });
     },
-
+    handleLoginClick() {
+      this.$router.push({
+        path: '/login',
+        query: { redirect: this.$route.fullPath }
+      });
+    },
     async submitForm() {
+      if (!this.isLoggedIn) {
+        this.$router.push({
+          name: 'Login',
+          query: { redirect: this.$route.fullPath }
+        });
+        return;
+      }
       try {
-        await this.$refs.form.validate()
-        this.submitting = true
-
-        // 处理行政区划数据
-        const [province, city, area] = this.form.areaCode
-
-        // 日期格式化函数
+        await this.$refs.form.validate();
+        this.submitting = true;
+        const [province, city, area] = this.form.areaCode;
         const formatDate = (date) => {
           const d = new Date(date);
           const year = d.getFullYear();
           const month = String(d.getMonth() + 1).padStart(2, '0');
           const day = String(d.getDate()).padStart(2, '0');
           return `${year}-${month}-${day}`;
-        }
-
-        // 构建符合后端要求的提交数据
+        };
         const submitData = {
           projectType: this.form.projectType,
           projectName: this.form.projectName,
           constructionUnit: this.form.constructionUnit,
           compilationUnit: this.form.compilationUnit,
-          province: province.toString(), // 确保转换为字符串
+          province: province.toString(),
           city: city.toString(),
           area: area.toString(),
           startDate: formatDate(this.form.dateRange[0]),
@@ -332,23 +356,59 @@ export default {
             name: f.name,
             url: f.url
           })))
-        }
-
-        const result = await submitProject(submitData)
-        this.$message.success('提交成功')
-        this.$router.push(`/Success`)
+        };
+        const result = await submitProject(submitData);
+        this.$message.success('提交成功');
+        this.$router.push(`/Success`);
       } catch (error) {
-        // 增强错误处理
-        let message = '提交失败'
+        let message = '提交失败';
         if (error.response) {
-          message = error.response.data.error || message
+          message = error.response.data.error || message;
         } else if (error.request) {
-          message = '网络连接异常，请检查网络后重试'
+          message = '网络连接异常，请检查网络后重试';
         }
-        this.$message.error(message)
+        this.$message.error(message);
       } finally {
-        this.submitting = false
+        this.submitting = false;
       }
+    },
+    disabledDate(time) {
+      if (!this.isLoggedIn) {
+        return time.getTime() < Date.now() - 8.64e7;
+      }
+      return false;
+    },
+    handleDateChange(value) {
+      if (!this.isLoggedIn && value.length > 0) {
+        const startDate = new Date(value[0].getFullYear(), value[0].getMonth(), value[0].getDate());
+        const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+        if (startDate >= today) {
+          this.$message({
+            message: '请在用户登录/注册后方可选择更早的时间点',
+            type: 'warning'
+          });
+        }
+      }
+    },
+    updateLoginStatus() {
+      this.isLoggedIn = !!localStorage.getItem('token');
+      try {
+        this.user = JSON.parse(localStorage.getItem('user') || 'null');
+      } catch (error) {
+        this.user = null;
+      }
+      this.headers.Authorization = `Bearer ${localStorage.getItem('token') || ''}`;
+    },
+    handleStorageChange(e) {
+      if (e.key === 'token' || e.key === 'user') {
+        this.updateLoginStatus();
+      }
+    },
+    logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      this.updateLoginStatus();
+      //this.$router.push('/login');
     }
   }
 }
@@ -380,26 +440,93 @@ export default {
   top: 0;
   left: 0;
   width: 100%;
-  height: 400px; /* 限制背景高度为上栏 */
+  height: 400px; 
   background: url('/public/assets/background.webp') no-repeat center center;
   background-size: cover;
-  opacity: 0.4; /* 降低透明度 60% (1 - 0.4 = 0.6) */
-  z-index: -1; /* 置于最底层 */
+  opacity: 0.4; 
+  z-index: -1; 
+}
+
+/* 统一登录状态容器样式 */
+.login-status-container {
+  position: fixed;
+  top: 100px;
+  right: 40px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 5px;
+  padding: 10px;
+  z-index: 999;
+  opacity: 0.8;
+  transition: opacity 0.3s;
+  width: 200px; /* 调整宽度适配图标 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-status-container:hover {
+  opacity: 1;
+}
+
+/* 已登录状态样式 */
+.el-dropdown-link {
+  color: white;
+  display: flex;
+  justify-content: center; /* 水平居中 */
+  align-items: center; /* 垂直居中 */
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  transition: color 0.3s;
+  cursor: pointer;
+}
+
+.el-dropdown-link:hover {
+  color: #409eff;
+}
+
+/* 未登录状态样式 */
+.login-status-link {
+  color: white;
+  text-decoration: none;
+  display: flex;
+  justify-content: center; /* 水平居中 */
+  align-items: center; /* 垂直居中 */
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  transition: color 0.3s;
+  cursor: pointer;
+}
+
+.login-status-link:hover {
+  color: #409eff;
+}
+
+/* 下拉菜单样式 */
+.login-dropdown-menu {
+  text-align: center;
+}
+
+/* 图标样式调整 */
+.el-icon {
+  font-size: 20px;
+  color: #fff;
 }
 
 /* 使用深度选择器覆盖element样式 */
 :deep(.submit-container .el-form-item:last-child .el-form-item__content) {
   display: flex;
   justify-content: center;
-  margin-left: 0 !important; /* 清除element默认的左侧margin */
+  margin-left: 0 !important; 
 }
 
 :deep(.submit-container .el-form-item:last-child button) {
   width: 200px;
   height: 40px;
   font-size: 16px;
-  letter-spacing: 2px; /* 可选：增加文字间距 */
-  transition: all 0.3s; /* 可选：添加过渡效果 */
+  letter-spacing: 2px; 
+  transition: all 0.3s; 
 }
 
 /* 鼠标悬停效果 */
@@ -413,13 +540,68 @@ export default {
   color: #606266 !important;
 }
 
-/* 优化移动端显示 */
+/* 新增移动端导航栏样式 */
 @media (max-width: 768px) {
-  .submit-container {
-    padding: 0 15px;
+  .navbar-brand {
+    font-size: 16px;
   }
-  .el-form-item__label {
-    white-space: normal;
+  
+  .navbar-toggler {
+    padding: 0.25rem 0.75rem;
+  }
+
+  .form-container {
+    margin: 100px auto 20px;
+    padding: 10px;
+  }
+
+  .el-row.el-col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    margin-bottom: 15px;
+  }
+
+  .login-status-container {
+    top: 20px;
+    right: 20px;
+    width: auto;
+    padding: 8px 12px;
+  }
+
+  .el-dropdown-link,
+  .login-status-link {
+    font-size: 14px;
+    gap: 6px;
+  }
+
+  .el-icon {
+    font-size: 18px;
+  }
+
+  .app-container::before {
+    height: 200px;
+  }
+
+  /* 级联选择器适配 */
+  .el-cascader {
+    width: 100%!important;
+  }
+
+  /* 文件上传适配 */
+  .el-upload {
+    width: 100%;
+  }
+
+  /* 按钮适配 */
+  :deep(.submit-container .el-form-item:last-child button) {
+    width: 180px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  /* 文本域适配 */
+  .el-input__inner {
+    padding: 6px 12px;
   }
 }
 </style>

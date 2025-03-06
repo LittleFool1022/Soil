@@ -4,8 +4,8 @@ import axios from 'axios'
 const service = axios.create({
   // 基础地址（根据环境变量自动切换）
   baseURL: process.env.NODE_ENV === 'development' 
-      ? 'https://www.zgstbc.com' 
-      : 'https://www.zgstbc.com',
+      ? 'http://localhost:3000' 
+      : 'http://localhost:8081',
   // 超时时间
   timeout: 15000,
   retry: 2, // 重试次数
@@ -117,6 +117,16 @@ export const deleteFile = (fileUrl) => {
     return service.delete('/api/uploads/files', {
         params: { url: fileUrl }
     });
+};
+
+// 登录接口
+export const login = (username, password) => {
+    return service.post('/api/login', { username, password });
+};
+
+// 注册接口
+export const register = (username, password) => {
+    return service.post('/api/register', { username, password });
 };
 
 export default service

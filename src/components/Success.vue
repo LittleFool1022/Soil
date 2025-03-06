@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
     <nav class="navbar navbar-expand-lg navbar-dark bg-success">
-      <div class="container">
+      <div class="container-fluid"> <!-- 使用 container-fluid 适配移动端 -->
         <router-link class="navbar-brand" to="/">中国水土保持公示网</router-link>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
           <span class="navbar-toggler-icon"></span>
@@ -63,5 +63,18 @@ export default {
   background-color: #fff;
   display: flex;
   justify-content: center;
+}
+
+/* 新增移动端导航栏样式 */
+@media (max-width: 768px) {
+  .navbar-brand {
+    font-size: 16px;
+  }
+  .navbar-toggler {
+    padding: 0.25rem 0.75rem;
+  }
+  #app-container {
+    margin: 80px auto;
+  }
 }
 </style>
