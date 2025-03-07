@@ -154,6 +154,7 @@ export default {
     return {
       submitting: false,
       uploadUrl: 'http://localhost:3000/api/uploads',
+      //uploadUrl: 'http://localhost:3000/api/uploads',
       headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
       projectTypes: [
         { value: 'B', label: '验收公示' },

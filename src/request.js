@@ -5,6 +5,7 @@ const service = axios.create({
   // 基础地址（根据环境变量自动切换）
   baseURL: process.env.NODE_ENV === 'development' 
       ? 'http://localhost:3000' 
+      //? 'https://zgstbc.netlify.app'
       : 'http://localhost:8081',
   // 超时时间
   timeout: 15000,
