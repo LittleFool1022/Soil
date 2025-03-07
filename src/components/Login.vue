@@ -91,7 +91,25 @@ export default {
             }
           } catch (error) {
             console.error('登录出错:', error);
-            this.$message.error('登录出错，请稍后重试');
+            let errorMessage = '登录出错，请稍后重试';
+            // 检查是否是 Axios 错误响应
+            if (error.response) {
+              const { status, data } = error.response;
+              if (status === 400) {
+                if (data.error === '用户名或密码错误') {
+                  errorMessage = '用户名或密码错误，请重新输入';
+                } else if (data.error === '用户名和密码不能为空') {
+                  errorMessage = '用户名和密码不能为空，请重新输入';
+                } else {
+                  errorMessage = data.error;
+                }
+              } else {
+                errorMessage = `请求失败，状态码: ${status}`;
+              }
+            } else if (error.message) {
+              errorMessage = error.message;
+            }
+            this.$message.error(errorMessage);
           }
         } else {
           this.$message.error('请填写完整的登录信息');
@@ -133,7 +151,7 @@ export default {
 
 .login-card {
   width: 90%; /* 移动端适配宽度 */
-  max-width: 400px;
+  max-width: 420px;
 }
 
 /* 新增移动端导航栏样式 */

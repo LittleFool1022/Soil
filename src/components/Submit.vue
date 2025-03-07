@@ -153,7 +153,7 @@ export default {
   data() {
     return {
       submitting: false,
-      uploadUrl: 'http://localhost:3000/api/uploads',
+      uploadUrl: 'https://www.zgstbc.com/api/uploads',
       //uploadUrl: 'http://localhost:3000/api/uploads',
       headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
       projectTypes: [

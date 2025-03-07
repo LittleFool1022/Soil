@@ -105,43 +105,47 @@ export default {
         callback();
       }
     },
+    // Register.vue（修改后的 handleRegister 方法）
     async handleRegister() {
       this.$refs.registerFormRef.validate(async (valid) => {
-        // 无论验证结果如何，都刷新验证码
         this.refreshCaptcha();
         if (valid) {
           try {
-            // 调用注册接口
             const response = await register(this.registerForm.username, this.registerForm.password);
-
-            // 注册成功处理
             if (response.data.message === '注册成功') {
-              // 注册成功后自动登录
+              // 自动登录逻辑
               const loginResponse = await login(this.registerForm.username, this.registerForm.password);
               if (loginResponse.data.message === '登录成功') {
-                // 存储用户信息和 token
                 localStorage.setItem('token', loginResponse.data.token);
                 localStorage.setItem('user', JSON.stringify({ username: this.registerForm.username }));
-                // 跳转到首页
                 this.$router.push('/');
               } else {
                 this.$message.error('自动登录失败，请手动登录');
                 this.$router.push('/login');
               }
-            } else if (response.data.error === '用户名已存在') {
-              // 用户名重复提示
-              this.$message.error('用户名已存在，请修改用户名');
-            } else {
-              // 注册失败提示
-              this.$message.error(response.data.error);
             }
           } catch (error) {
             console.error('注册出错:', error);
-            this.$message.error('注册出错，请稍后重试');
+            let errorMessage = '注册出错，请稍后重试';
+            // 检查是否是 Axios 错误响应
+            if (error.response) {
+              const { status, data } = error.response;
+              if (status === 400) {
+                if (data.error === '用户名已存在') {
+                  errorMessage = '用户名已存在，请修改用户名';
+                } else if (data.error === '用户名和密码不能为空') {
+                  errorMessage = '用户名和密码不能为空，请重新输入';
+                } else {
+                  errorMessage = data.error;
+                }
+              } else {
+                errorMessage = `请求失败，状态码: ${status}`;
+              }
+            } else if (error.message) {
+              errorMessage = error.message;
+            }
+            this.$message.error(errorMessage);
           }
-        } else {
-          this.$message.error('请填写完整的注册信息');
-          return false;
         }
       });
     }
@@ -179,7 +183,7 @@ export default {
 
 .register-card {
   width: 90%; /* 移动端适配宽度 */
-  max-width: 400px;
+  max-width: 420px;
 }
 
 /* 新增移动端导航栏样式 */

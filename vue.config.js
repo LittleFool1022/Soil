@@ -5,8 +5,8 @@ module.exports = defineConfig({
   devServer: {
     proxy: {
       '/api': {
-        //target: 'https://www.zgstbc.com',
-        target: 'http://localhost:3000',
+        target: 'https://www.zgstbc.com',
+        //target: 'http://localhost:3000',
         //target: 'https://zgstbc.netlify.app',
         changeOrigin: true,
         pathRewrite: {

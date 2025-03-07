@@ -4,9 +4,11 @@ import axios from 'axios'
 const service = axios.create({
   // 基础地址（根据环境变量自动切换）
   baseURL: process.env.NODE_ENV === 'development' 
-      ? 'http://localhost:3000' 
+      ? 'https://www.zgstbc.com' 
+      : 'https://www.zgstbc.com',
+      //? 'http://localhost:3000' 
       //? 'https://zgstbc.netlify.app'
-      : 'http://localhost:8081',
+      //: 'http://localhost:8081',
   // 超时时间
   timeout: 15000,
   retry: 2, // 重试次数
@@ -34,10 +36,10 @@ service.interceptors.request.use(
 );
 
 // 响应拦截器
+// request.js（修改后的响应拦截器）
 service.interceptors.response.use(
   response => {
-    // 直接返回完整的响应对象
-    return response; 
+    return response;
   },
   error => {
     if (error.response) {
@@ -48,12 +50,8 @@ service.interceptors.response.use(
     } else {
       console.error('请求设置时发生错误:', error.message);
     }
-    // 统一错误处理
-    const message = error.response?.data?.message || 
-                   error.message ||
-                   '网络连接异常';
-    console.error('API Error:', message);
-    return Promise.reject(message);
+    // 直接返回原始错误对象，不包装为字符串
+    return Promise.reject(error);
   }
 );
 
